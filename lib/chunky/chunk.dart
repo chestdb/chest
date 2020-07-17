@@ -18,8 +18,20 @@ class Chunk {
 
   Uint8List get bytes => _list;
 
-  void setUint8(offset, value) => _data.setUint8(offset, value);
-  int getUint8(offset) => _data.getUint8(offset);
+  void setUint8(int offset, int value) => _data.setUint8(offset, value);
+  int getUint8(int offset) => _data.getUint8(offset);
+  void setUint16(int offset, int value) => _data.setUint16(offset, value);
+  int getUint16(int offset) => _data.getUint16(offset);
+
+  void setBytes(int offset, List<int> bytes) {
+    for (var i = 0; i < bytes.length; i++) {
+      setUint8(offset + i, bytes[i]);
+    }
+  }
+
+  List<int> getBytes(int offset, int length) {
+    return <int>[for (var i = 0; i < length; i++) getUint8(offset + i)];
+  }
 
   String toString() => hex.encode(_list);
 }
