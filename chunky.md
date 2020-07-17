@@ -32,26 +32,24 @@ To be able to do incremental updates, chunks are introduced. They are contiguous
 Cassette's lowest layer – chunky – provides an abstraction from these chunks so you can atomically write to multiple chunks.
 
 ```dart
-final chunky = await ChunkManager(ChunkFile('sample'));
-
-
+final chunky = await Chunky.named('sample');
 final firstChunk = await chunky.read(0);
+
 // Writes on chunks only change the data in memory. To actually write them to
 // disk, `chunky.write` has to be used inside a transaction.
-firstChunk.writeUint8(24, 42);
+firstChunk.setUint8(24, 42);
 
-await chunky.transaction(() async {
+await chunky.transaction((chunky) async {
   await chunky.write(0, firstChunk);
 });
 
-
 final newChunk = Chunk.empty();
-newChunk.writeUint8(1, firstChunk.readUint8(2));
+newChunk.setUint8(1, firstChunk.getUint8(2));
 
 // Inside transactions, multiple chunks can be written to.
-await chunky.transaction(() async {
+await chunky.transaction((chunky) async {
   final chunkId = await chunky.add(newChunk);
-  firstChunk.writeUint8(123, chunkId);
+  firstChunk.setUint8(123, chunkId);
   await chunky.write(0, firstChunk);
 });
 ```
