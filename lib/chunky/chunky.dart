@@ -1,176 +1,233 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:math';
 
 import 'package:meta/meta.dart';
 
 import 'chunk.dart';
 import 'sync_file.dart';
 
-/// The [ChunkManager] offers low-level primitives of loading parts of a file
-/// (so-called "chunks") into memory, and writing in atomic batches. Those
-/// chunks all have the same size [chunkSize].
+/// [Chunky] offers low-level primitives of loading parts of a file (so-called
+/// "chunks") into memory, and writing in atomic batches. Those chunks all have
+/// the same size [chunkSize].
 ///
-/// One [ChunkManager] actually manages two files:
-/// - The chunk file (`sample.cassette`) holds the actual chunk data (and that
-///   can be a lot of data).
-/// - The transaction file (`sample.transaction.cassette`) holds all changes of
-///   the currently running transaction as well as a bit indicating whether the
-///   transaction got committed. During a transaction, the changes are only
-///   written to this file. Once the transaction is complete (it is "committed"),
-///   the commit bit is set to true and the changes are actually applied to the
-///   chunk file one after another.
-///   If the program gets aborted while a transaction is running (so, before
-///   it's committed), the commit bit is not set, so the changes are not
-///   applied on next startup.
-///   If the program gets aborted while the changes are written to the chunk
-///   file (after the transaction is committed), the commit bit is set, so the
-///   changes are written to the chunk file on the next startup.
-class ChunkManager {
-  ChunkManager(String baseName) {
-    _chunkFile = SyncFile('$baseName.cassette');
-    _transactionFile = SyncFile('$baseName.transaction.cassette');
+/// [Chunky] actually manages two files:
+/// - The chunk file holds the actual chunk data (that can be a lot of data).
+/// - The transaction file holds all changes of the currently running
+///   transaction as well as a byte indicating whether the transaction is
+///   committed (aka ready to be applied to the chunk file).
+class Chunky {
+  Chunky.named(String name)
+      : this(
+          chunkFile: SyncFile('$name.cassette'),
+          transactionFile: SyncFile('$name.transaction.cassette'),
+        );
 
-    final length = _chunkFile.length();
+  Chunky({@required this.chunkFile, @required this.transactionFile}) {
+    final length = chunkFile.length();
     assert(length % chunkSize == 0);
     _numberOfChunks = length ~/ chunkSize;
 
-    var transactionWasRunning = false;
-    if (_transactionFile.length() > 0) {
-      _transactionFile.goTo(0);
-      transactionWasRunning = _transactionFile.readByte() != 0;
-    }
-    if (transactionWasRunning) {
-      _restoreTransaction();
-    } else {
-      _clearTransaction();
-    }
+    ChunkyTransaction.restoreIfCommitted(transactionFile, chunkFile);
   }
 
-  SyncFile _chunkFile;
-  SyncFile _transactionFile;
+  final SyncFile chunkFile;
+  final SyncFile transactionFile;
 
-  int _numberOfChunks;
+  /// How many chunks the chunk file contains.
   int get numberOfChunks => _numberOfChunks;
-  Future<void> _transaction = Future.value();
-  int _numScheduledTransactions = 0;
-  bool get isTransactionRunning => _numScheduledTransactions > 0;
+  int _numberOfChunks;
 
-  final _transactionChunks = <int, int>{};
+  var _transactionFuture = Future<void>.value();
+  var _transactionQueueLength = 0;
+  bool get _isTransactionQueueEmpty => _transactionQueueLength == 0;
 
-  final _chunkBuffer = Chunk.empty();
-
+  /// Reads the chunk at the specified [index] into the provided [chunk].
   void readInto(int index, Chunk chunk) {
-    print('Reading the chunk at index $index into...');
-    if (_transactionChunks.containsKey(index)) {
-      // The chunk has been changed in this transaction, so we return the
-      // updated value.
-      _transactionFile
-        ..goTo(_transactionChunks[index])
-        ..readChunkInto(chunk);
-    } else {
-      // The chunk hasn't been changed in this transaction, so we can get it
-      // from the original file.
-      _chunkFile
-        ..goToIndex(index)
-        ..readChunkInto(chunk);
-    }
+    chunkFile
+      ..goToIndex(index)
+      ..readChunkInto(chunk);
   }
 
+  /// Returns a new [Chunk] representing the chunk at the specified [index].
   Chunk read(int index) {
-    print('Reading the chunk at index $index...');
     final chunk = Chunk.empty();
     readInto(index, chunk);
     return chunk;
   }
 
-  void _clearTransaction() {
-    print('Clearing the transaction...');
-    _transactionFile
-      ..clear()
-      ..goTo(0)
-      ..writeByte(0)
-      ..flush();
+  void _write(int index, Chunk chunk) {
+    chunkFile
+      ..goToIndex(index)
+      ..writeChunk(chunk);
+    _numberOfChunks = max(_numberOfChunks, index + 1);
   }
 
-  Future<T> transaction<T>(Future<T> Function() callback) {
-    print('Starting a transaction...');
-    _numScheduledTransactions++;
+  void _flush() => chunkFile.flush();
 
-    final previousTransaction = _transaction;
+  /// Runs a transaction, in which writes can happen.
+  Future<T> transaction<T>(Future<T> Function(ChunkyTransaction) callback) {
+    final previousFuture = _transactionFuture;
     final completer = Completer<T>();
-    _transaction = completer.future;
+    _transactionFuture = completer.future;
+    _transactionQueueLength++;
 
-    return previousTransaction.then((_) async {
-      final result = await callback();
-
-      _transactionFile
-        ..flush()
-        ..goTo(0)
-        ..writeByte(255)
-        ..flush();
-      for (final entry in _transactionChunks.entries) {
-        final index = entry.key;
-        final offset = entry.value;
-
-        _transactionFile
-          ..goTo(offset)
-          ..readChunkInto(_chunkBuffer);
-        _chunkFile
-          ..goTo(index)
-          ..writeChunk(_chunkBuffer);
+    return previousFuture.then((_) async {
+      final transaction = ChunkyTransaction._(this);
+      T result;
+      try {
+        result = await callback(transaction);
+      } finally {
+        _transactionQueueLength--;
       }
-      _clearTransaction();
-
-      _numScheduledTransactions--;
+      transaction._commit();
       completer.complete(result);
       return result;
     });
   }
 
-  void write(int index, Chunk chunk) {
-    assert(isTransactionRunning);
-    print('Writing chunk to index $index...');
+  Future<void> close() async {
+    while (!_isTransactionQueueEmpty) {
+      await _transactionFuture;
+    }
+    chunkFile.close();
+    transactionFile.close();
+  }
+}
+
+/// Writes don't get applied to the chunk file directly, because the program may
+/// be aborted while writing, causing changes to be partially written to the
+/// file. That's why during a transaction, the changes are written to a separate
+/// transaction file, which has the following format:
+///
+/// | commit byte | index | chunk data | index chunk data | ... |
+///
+/// The commit byte indicates whether the changes are ready to be applied to the
+/// actual chunk file (it's 0 or 255). For each change, the chunk index and
+/// chunk data are saved.
+///
+/// Initially, the commit byte is zero. During the transaction, the changes are
+/// added to the transaction file. Once the transaction is done, the commit
+/// byte is set to 255. Then, the changes are applied to the chunk file.
+/// When chunky is started and the transaction file's commit byte is set to 255,
+/// the changes are automatically applied to the chunk file.
+///
+/// So, why are the operations atomic?
+/// - If the program gets aborted while a transaction is running (so, before
+///   it's committed), the commit byte is not set, so the changes are not
+///   applied on the next startup.
+/// - If the program gets aborted while the changes are written to the chunk
+///   file (after the transaction is committed), the commit bit is set, so the
+///   changes are written to the chunk file on the next startup.
+///
+/// For more information, read
+class ChunkyTransaction {
+  ChunkyTransaction._(this._chunky) {
+    // Prepare the file by setting the commit byte to 0 and removing the rest.
     _transactionFile
-      ..goToEnd()
+      ..clear()
+      ..goTo(0)
+      ..writeByte(0);
+    _numberOfChunks = _chunky.numberOfChunks;
+  }
+
+  final Chunky _chunky;
+  SyncFile get _transactionFile => _chunky.transactionFile;
+
+  /// A map from chunk indizes to byte offsets in the transaction file.
+  final _changedChunks = <int, int>{};
+  bool _isCommitted = false;
+
+  /// How many chunks the chunk file contains.
+  int get numberOfChunks => _numberOfChunks;
+  int _numberOfChunks;
+
+  void readInto(int index, Chunk chunk) {
+    assert(!_isCommitted);
+
+    // Depending on whether the chunk was changed in this transaction, get the
+    // changed one from the transaction file or the original one from the chunk
+    // file.
+    if (_changedChunks.containsKey(index)) {
+      _transactionFile
+        ..goTo(_changedChunks[index])
+        ..readChunkInto(chunk);
+    } else {
+      _chunky.readInto(index, chunk);
+    }
+  }
+
+  Chunk read(int index) {
+    assert(!_isCommitted);
+
+    final chunk = Chunk.empty();
+    readInto(index, chunk);
+    return chunk;
+  }
+
+  void write(int index, Chunk chunk) {
+    assert(!_isCommitted);
+
+    _transactionFile
       ..writeInt(index)
       ..writeChunk(chunk);
+    _changedChunks[index] = _transactionFile.length() - chunkSize;
+    _numberOfChunks = max(_numberOfChunks, index + 1);
   }
 
   int add(Chunk chunk) {
-    assert(isTransactionRunning);
-    print('Adding chunk...');
+    assert(!_isCommitted);
+
     final index = _numberOfChunks;
     write(index, chunk);
-    _numberOfChunks++;
     return index;
   }
 
-  void _restoreTransaction() {
-    print('Restoring the transaction...');
-    final length = _transactionFile.length();
+  void _commit() {
+    final chunkBuffer = Chunk.empty();
+    _transactionFile
+      ..flush()
+      ..goTo(0)
+      ..writeByte(255)
+      ..flush();
 
-    _transactionFile..goTo(1);
+    // Rather than going through the transaction file and applying the changes
+    // one by one, we combine multiple changes to the same chunk into one change
+    // by only applying all [changedChunks] once.
+    for (final entry in _changedChunks.entries) {
+      final index = entry.key;
+      final offset = entry.value;
+      _transactionFile
+        ..goTo(offset)
+        ..readChunkInto(chunkBuffer);
+      _chunky._write(index, chunkBuffer);
+    }
+
+    _chunky._flush();
+    _transactionFile
+      ..goTo(0)
+      ..writeByte(0)
+      ..flush();
+  }
+
+  static restoreIfCommitted(SyncFile transactionFile, SyncFile chunkFile) {
+    transactionFile.goTo(0);
+    if (transactionFile.length() == 0 || transactionFile.readByte() == 0) {
+      // The file doesn't contain a committed transaction.
+      return;
+    }
+
+    // Restore the committed transaction.
+    final chunkBuffer = Chunk.empty();
+    final length = transactionFile.length();
     var position = 1;
 
     while (position < length) {
-      final index = _transactionFile.readInt();
-      _transactionFile.readChunkInto(_chunkBuffer);
-      _chunkFile
+      final index = transactionFile.readInt();
+      transactionFile.readChunkInto(chunkBuffer);
+      chunkFile
         ..goToIndex(index)
-        ..writeChunk(_chunkBuffer);
+        ..writeChunk(chunkBuffer);
       position += 8 + chunkSize;
     }
-
-    _clearTransaction();
-  }
-
-  Future<void> close() async {
-    print('Closing...');
-    while (isTransactionRunning) {
-      await _transaction;
-    }
-    _transactionFile.close();
-    _chunkFile.close();
   }
 }

@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-const chunkSize = 4 * 1024; // 4 KiB
+import 'package:convert/convert.dart';
+
+// const chunkSize = 4 * 1024; // 4 KiB
+const chunkSize = 64;
 
 class Chunk {
   Chunk._(this._data, this._list)
@@ -16,4 +20,6 @@ class Chunk {
 
   void setUint8(offset, value) => _data.setUint8(offset, value);
   int getUint8(offset) => _data.getUint8(offset);
+
+  String toString() => hex.encode(_list);
 }

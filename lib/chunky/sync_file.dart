@@ -31,15 +31,13 @@ class SyncFile {
   void writeByte(int value) => _file.writeByteSync(value);
   int readByte() => _file.readByteSync();
 
-  String get name => _file.path;
+  String get path => _file.path;
   void writeInt(int value) {
-    print('Writing int to $name (${_file.positionSync()}).');
     _intData.setInt64(0, value);
     _file.writeFromSync(_intList);
   }
 
   int readInt() {
-    print('Reading int from $name (${_file.positionSync()}).');
     _file.readIntoSync(_intList);
     return _intData.getInt64(0);
   }
