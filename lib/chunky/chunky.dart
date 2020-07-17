@@ -65,7 +65,7 @@ class Chunky {
   void _flush() => chunkFile.flush();
 
   /// Runs a transaction, in which writes can happen.
-  Future<T> transaction<T>(Future<T> Function(ChunkyTransaction) callback) {
+  Future<T> transaction<T>(FutureOr<T> Function(ChunkyTransaction) callback) {
     final previousFuture = _transactionFuture;
     final completer = Completer<T>();
     _transactionFuture = completer.future;
