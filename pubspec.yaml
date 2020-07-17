@@ -2,3 +2,4 @@ name: cassette
 
 dependencies:
   meta: any
+  convert: any
