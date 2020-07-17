@@ -1,265 +1,176 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:meta/meta.dart';
+
 import 'chunk.dart';
-import 'file.dart';
-
-part 'transaction.dart';
-
-const translationsPerTranslationChunk = chunkSize ~/ 8;
+import 'sync_file.dart';
 
 /// The [ChunkManager] offers low-level primitives of loading parts of a file
-/// into memory, virtualization from physical addresses, and atomic operations.
-/// All operations are O(1).
+/// (so-called "chunks") into memory, and writing in atomic batches. Those
+/// chunks all have the same size [chunkSize].
 ///
-/// To achieve that, the file is organized into multiple chunks of size
-/// [chunkSize], which have virtualized addresses. This allows for more
-/// flexibility, more on that later.
-///
-/// ## Terminology
-///
-/// - Chunk refers to one region in the file of [chunkSize].
-/// - Offset refers to the actual byte offset in the file.
-/// - The address of a chunk is its physical index in the file.
-/// - The id of a chunk is its abstracted user-visible virtual index.
-///
-/// ## File layout
-///
-/// | header  | translation | ...        | translation | ...        | transaction |
-/// | 1 chunk | 1 chunk     | 512 chunks | 1 chunk     | 512 chunks | rest        |
-///
-/// As you see, before every 512 user/free chunks there's a translation chunk
-/// that saves translation information for 512 chunks (not necessarily the next
-/// 512). If chunks get obsolete (freed), the file doesn't automatically shrink.
-/// Instead, they are just marked as free and then reused when needed.
-///
-/// The user/free chunks are also sometimes called content chunks because they
-/// represent space where actual content might go. The header/translation chunks
-/// are also called scaffold chunks because they're the structure with metadata
-/// about the rest.
-///
-/// Note that the transaction log at the end is not chunk-aligned.
-///
-/// ## Chunk types
-///
-/// ### User chunk
-///
-/// A chunk containing data for the layers above us ("user"). The data has no
-/// layout or guarantees known to us.
-///
-/// ### Translation chunk
-///
-///  0       7 8      15 16     23 24     31 32     29
-/// | address | address | address | address | address | ... |
-///
-/// A chunk containing mapping information from ids to physical addresses. The
-/// first translation chunk contains the addresses for the ids 0 to 511, the
-/// second one for the next 512 etc. The address information are just written
-/// one after another.
-///
-/// ### Header chunk
-///
-/// The header chunk contains general information.
-///
-///  0       7 8          15 16         23 24      31 32
-/// | version | user chunks | free chunks | 1st free | t |
-///
-/// version: The file format version.
-/// user chunks: The number of user chunks.
-/// free chunks: The number of free chunks.
-/// 1st free: The address of the first free chunk.
-/// t: Whether a transaction is running or not.
-///
-/// ### Free chunk
-///
-///  0        7 8   15
-/// | previous | next | garbage |
-///
-/// Those are chunks that have been freed and contain garbage. To efficiently be
-/// able to find new free chunks, they form a double linked list by pointing to
-/// the next and previous free chunks using 8-bit integers.
-///
-/// ## Actions
-///
-/// ### Writing to a chunk
-///
-/// - Create a new chunk and write the modified data to it.
-/// - In a transaction, do:
-///   - Update the appropriate translation entry.
-///   - Free the orginal chunk by setting the previous and next chunks' pointers
-///     accordingly and adding pointers to them on the original chunk.
-class ChunkManager {}
+/// One [ChunkManager] actually manages two files:
+/// - The chunk file (`sample.cassette`) holds the actual chunk data (and that
+///   can be a lot of data).
+/// - The transaction file (`sample.transaction.cassette`) holds all changes of
+///   the currently running transaction as well as a bit indicating whether the
+///   transaction got committed. During a transaction, the changes are only
+///   written to this file. Once the transaction is complete (it is "committed"),
+///   the commit bit is set to true and the changes are actually applied to the
+///   chunk file one after another.
+///   If the program gets aborted while a transaction is running (so, before
+///   it's committed), the commit bit is not set, so the changes are not
+///   applied on next startup.
+///   If the program gets aborted while the changes are written to the chunk
+///   file (after the transaction is committed), the commit bit is set, so the
+///   changes are written to the chunk file on the next startup.
+class ChunkManager {
+  ChunkManager(String baseName) {
+    _chunkFile = SyncFile('$baseName.cassette');
+    _transactionFile = SyncFile('$baseName.transaction.cassette');
 
-class ChunkManagerImpl implements ChunkManager {
-  ChunkManagerImpl(String fileName) {
-    // Open the file.
-    _file = File.open(fileName);
-    final length = _file.length();
+    final length = _chunkFile.length();
+    assert(length % chunkSize == 0);
+    _numberOfChunks = length ~/ chunkSize;
 
-    if (length < chunkSize) {
-      // Leaving everything zero does exactly what we want.
-      _file.writeChunkFrom(Chunk.empty());
+    var transactionWasRunning = false;
+    if (_transactionFile.length() > 0) {
+      _transactionFile.goTo(0);
+      transactionWasRunning = _transactionFile.readByte() != 0;
     }
-
-    _file.toOffset(0);
-    _version = _file.readInt();
-    _numberOfUserChunks = _file.readInt();
-    _numberOfFreeChunks = _file.readInt();
-    _firstFreeChunk = _file.readInt();
-    _isTransactionRunning = _file.readByte() != 0;
-
-    print('Version is $version');
-    print('$numberOfUserChunks user chunks');
-    print('$numberOfFreeChunks free chunks');
-    print('first free chunk is at $firstFreeChunk');
-    print('is transaction running? $isTransactionRunning');
-
-    if (isTransactionRunning) {
-      runExistingTransaction();
-    }
-  }
-
-  File _file;
-
-  int _version;
-  int get version => _version;
-  set version(int version) {
-    _version = version;
-    _file.toOffset(0).writeInt(version);
-  }
-
-  int _numberOfUserChunks;
-  int get numberOfUserChunks => _numberOfUserChunks;
-  set numberOfUserChunks(int numberOfUserChunks) {
-    _numberOfUserChunks = numberOfUserChunks;
-    _file.toOffset(8).writeInt(numberOfUserChunks);
-  }
-
-  int _numberOfFreeChunks;
-  int get numberOfFreeChunks => _numberOfFreeChunks;
-  set numberOfFreeChunks(int numberOfFreeChunks) {
-    _numberOfFreeChunks = numberOfFreeChunks;
-    _file.toOffset(16).writeInt(numberOfFreeChunks);
-  }
-
-  int _firstFreeChunk;
-  int get firstFreeChunk => _firstFreeChunk;
-  void set firstFreeChunk(int address) {
-    _firstFreeChunk = address;
-    _file.toOffset(24).writeInt(address);
-  }
-
-  bool _isTransactionRunning;
-  bool get isTransactionRunning => _isTransactionRunning;
-  set isTransactionRunning(bool isTransactionRunning) {
-    _isTransactionRunning = isTransactionRunning;
-    _file.toOffset(32).writeByte(isTransactionRunning ? 255 : 0);
-  }
-
-  /// The size of the file.
-  int get fileSize => _file.length();
-
-  int get numberOfContentChunks => numberOfUserChunks + numberOfFreeChunks;
-  int get numberOfScaffoldChunks =>
-      2 + numberOfContentChunks ~/ translationsPerTranslationChunk;
-  int get totalNumberOfChunks => numberOfContentChunks + numberOfScaffoldChunks;
-  int get endOffset => totalNumberOfChunks * chunkSize;
-
-  /// Reserves a new chunk.
-  int reserve() {
-    final id = numberOfUserChunks;
-
-    if (firstFreeChunk != 0) {
-      // There are free chunks, so we use the first one.
-      _file.toChunk(firstFreeChunk);
-      final current = firstFreeChunk;
-      final previous = _file.readInt();
-      final next = _file.readInt();
-      assert(previous == 0);
-
-      _file.toChunk(next).writeInt(0);
-      runTransaction([
-        SetChunkIdToAddress(id, current),
-        SetNumberOfFreeChunks(numberOfFreeChunks - 1),
-        SetNumberOfUserChunks(numberOfUserChunks + 1),
-        // Update the linked list.
-        SetFirstFreeChunk(next),
-        SetPreviousFreeChunk(next, 0),
-      ]);
+    if (transactionWasRunning) {
+      _restoreTransaction();
     } else {
-      // There are no free chunks, so we have to allocate a new one.
-      var address = totalNumberOfChunks;
-
-      if (numberOfContentChunks % translationsPerTranslationChunk == 0) {
-        // We also need to allocate a new translation chunk.
-        _file.toChunk(address).writeChunkFrom(Chunk.empty());
-        address++;
-      }
-      _file.writeChunkFrom(Chunk.empty());
-
-      runTransaction([
-        SetChunkIdToAddress(id, address),
-        SetNumberOfUserChunks(numberOfUserChunks + 1),
-      ]);
+      _clearTransaction();
     }
-
-    return id;
   }
 
-// * When asked to (atomically) write to a chunk, it'll create a completely new
-//   chunk, put the content in there, write transaction data into a chunk and
-//   flush everything. Only then will attempt to execute the transaction by
-//   updating the addresses in the translation table from
-//
+  SyncFile _chunkFile;
+  SyncFile _transactionFile;
 
-  /// Reads the chunk with the given [id] into the [chunk].
-  void readInto(int id, Chunk chunk) {
-    final address = _file.toOffset(offsetForIdLookup(id)).readInt();
-    _file.toChunk(address).readChunkInto(chunk);
-  }
+  int _numberOfChunks;
+  int get numberOfChunks => _numberOfChunks;
+  Future<void> _transaction = Future.value();
+  int _numScheduledTransactions = 0;
+  bool get isTransactionRunning => _numScheduledTransactions > 0;
 
-  void writeFrom(int id, Chunk chunk) {
-    if (firstFreeChunk != 0) {
-      // There are free chunks, so we use the first one.
-      _file.toChunk(firstFreeChunk);
-      final current = firstFreeChunk;
-      final previous = _file.readInt();
-      final next = _file.readInt();
-      assert(previous == 0);
+  final _transactionChunks = <int, int>{};
 
-      _file.toChunk(next).writeInt(0);
-      runTransaction([
-        SetChunkIdToAddress(id, current),
-        SetNumberOfFreeChunks(numberOfFreeChunks - 1),
-        SetNumberOfUserChunks(numberOfUserChunks + 1),
-        // Update the linked list.
-        SetFirstFreeChunk(next),
-        SetPreviousFreeChunk(next, 0),
-      ]);
+  final _chunkBuffer = Chunk.empty();
+
+  void readInto(int index, Chunk chunk) {
+    print('Reading the chunk at index $index into...');
+    if (_transactionChunks.containsKey(index)) {
+      // The chunk has been changed in this transaction, so we return the
+      // updated value.
+      _transactionFile
+        ..goTo(_transactionChunks[index])
+        ..readChunkInto(chunk);
     } else {
-      // There are no free chunks, so we have to allocate a new one.
-      var address = totalNumberOfChunks;
-
-      if (numberOfContentChunks % translationsPerTranslationChunk == 0) {
-        // We also need to allocate a new translation chunk.
-        _file.toChunk(address).writeChunkFrom(Chunk.empty());
-        address++;
-      }
-      _file.writeChunkFrom(Chunk.empty());
-
-      runTransaction([
-        SetChunkIdToAddress(id, address),
-        SetNumberOfUserChunks(numberOfUserChunks + 1),
-      ]);
+      // The chunk hasn't been changed in this transaction, so we can get it
+      // from the original file.
+      _chunkFile
+        ..goToIndex(index)
+        ..readChunkInto(chunk);
     }
   }
-}
 
-int translationChunkAddressForId(int id) {
-  final translationChunkIndex = id ~/ translationsPerTranslationChunk;
-  return 1 + translationChunkIndex * (translationsPerTranslationChunk + 1);
-}
+  Chunk read(int index) {
+    print('Reading the chunk at index $index...');
+    final chunk = Chunk.empty();
+    readInto(index, chunk);
+    return chunk;
+  }
 
-int offsetForIdLookup(int id) {
-  return translationChunkAddressForId(id) * chunkSize +
-      id % translationsPerTranslationChunk;
+  void _clearTransaction() {
+    print('Clearing the transaction...');
+    _transactionFile
+      ..clear()
+      ..goTo(0)
+      ..writeByte(0)
+      ..flush();
+  }
+
+  Future<T> transaction<T>(Future<T> Function() callback) {
+    print('Starting a transaction...');
+    _numScheduledTransactions++;
+
+    final previousTransaction = _transaction;
+    final completer = Completer<T>();
+    _transaction = completer.future;
+
+    return previousTransaction.then((_) async {
+      final result = await callback();
+
+      _transactionFile
+        ..flush()
+        ..goTo(0)
+        ..writeByte(255)
+        ..flush();
+      for (final entry in _transactionChunks.entries) {
+        final index = entry.key;
+        final offset = entry.value;
+
+        _transactionFile
+          ..goTo(offset)
+          ..readChunkInto(_chunkBuffer);
+        _chunkFile
+          ..goTo(index)
+          ..writeChunk(_chunkBuffer);
+      }
+      _clearTransaction();
+
+      _numScheduledTransactions--;
+      completer.complete(result);
+      return result;
+    });
+  }
+
+  void write(int index, Chunk chunk) {
+    assert(isTransactionRunning);
+    print('Writing chunk to index $index...');
+    _transactionFile
+      ..goToEnd()
+      ..writeInt(index)
+      ..writeChunk(chunk);
+  }
+
+  int add(Chunk chunk) {
+    assert(isTransactionRunning);
+    print('Adding chunk...');
+    final index = _numberOfChunks;
+    write(index, chunk);
+    _numberOfChunks++;
+    return index;
+  }
+
+  void _restoreTransaction() {
+    print('Restoring the transaction...');
+    final length = _transactionFile.length();
+
+    _transactionFile..goTo(1);
+    var position = 1;
+
+    while (position < length) {
+      final index = _transactionFile.readInt();
+      _transactionFile.readChunkInto(_chunkBuffer);
+      _chunkFile
+        ..goToIndex(index)
+        ..writeChunk(_chunkBuffer);
+      position += 8 + chunkSize;
+    }
+
+    _clearTransaction();
+  }
+
+  Future<void> close() async {
+    print('Closing...');
+    while (isTransactionRunning) {
+      await _transaction;
+    }
+    _transactionFile.close();
+    _chunkFile.close();
+  }
 }

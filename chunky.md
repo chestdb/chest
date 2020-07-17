@@ -32,22 +32,30 @@ To be able to do incremental updates, chunks are introduced. They are contiguous
 Cassette's lowest layer – chunky – provides an abstraction from these chunks so you can atomically write to multiple chunks.
 
 ```dart
-final chunky = await ChunkManager(File('sample.bin'));
+final chunky = await ChunkManager(ChunkFile('sample'));
+
 
 final firstChunk = await chunky.read(0);
-final newChunk = ChunkData();
-
+// Writes on chunks only change the data in memory. To actually write them to
+// disk, `chunky.write` has to be used inside a transaction.
 firstChunk.writeUint8(24, 42);
+
+await chunky.transaction(() async {
+  await chunky.write(0, firstChunk);
+});
+
+
+final newChunk = Chunk.empty();
 newChunk.writeUint8(1, firstChunk.readUint8(2));
 
-final id = chunk.add(newChunk);
-newChunk.writeUint8(123, 12);
-
-await chunky.writeAll({
-  0: firstChunk,
-  id: newChunk,
+// Inside transactions, multiple chunks can be written to.
+await chunky.transaction(() async {
+  final chunkId = await chunky.add(newChunk);
+  firstChunk.writeUint8(123, chunkId);
+  await chunky.write(0, firstChunk);
 });
 ```
 
-How do atomically writing to chunks work? By introducing a layer of indirection!
-Chunks don't actually correspond to the place they are stored in the file. Intead, there's a translation table that maps virtual chunks to phyiscal ones.
+As you see, all writes happen inside transactions and chunks cannot be modified, only completely rewritten to disk.
+Before the changes are actually applied to the `sample.cassette` file, they are written to a second `sample.transaction.cassette` file.
+So, a chunk is actually written two times. The benefit is that writing becomes atomic: If the program crashes while writing a change, the change has already been writing to the transaction file, so it can be restored.
