@@ -1,1 +1,4 @@
 name: cassette
+
+dependencies:
+  meta: any
