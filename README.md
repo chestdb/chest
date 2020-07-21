@@ -1,4 +1,4 @@
-# Cassette
+# Chest
 
 A database.
 
@@ -9,7 +9,7 @@ They're amazingly fast and allows synchronous access (see Hive or Sembast).
 
 Only loading records on an as-needed basis is better suited for large volumes of data though – it improves startup time and makes it possible to store huge amounts of data.
 
-Cassette aims to use a hybrid approach – it prefetches and caches a certain amount of records in memory and loads new ones as needed.
+Chest aims to use a hybrid approach – it prefetches and caches a certain amount of records in memory and loads new ones as needed.
 You're also able to preload some records so they will always be kept in memory.
 
 TODO: Think about how a synchronous API could work.
@@ -31,7 +31,7 @@ A great advantage of pure Dart, on the other hand, is that it doesn't require an
 Writing everything in Dart does come at the cost of having to implement basic database functionalities, like indizes, but it also mean less overhead dealing with the boundary between native code and Dart and being able to debug across those boundaries.
 
 There are already several native wrapper libraries like <kbd>sqflite</kbd> out there.
-So, I believe that using pure Dart puts Cassette in a very unique position in that allows for deep integration with the Dart ecosystem and language.
+So, I believe that using pure Dart puts Chest in a very unique position in that allows for deep integration with the Dart ecosystem and language.
 
 ## API
 
@@ -65,7 +65,7 @@ final someUsers = users.query((user) {
 
 This section only applies to debug mode builds.
 
-For debugging, similar to Dart DevTools, Cassette should have a web interface.
+For debugging, similar to Dart DevTools, Chest should have a web interface.
 It should have some tabs, which contain useful functionality:
 
 - Performance
@@ -87,7 +87,7 @@ It should have some tabs, which contain useful functionality:
 
 ## General architecture
 
-Each `Cassette.box` call creates a new `Isolate` that handles all interactions with the file.
+Each `Chest.box` call creates a new `Isolate` that handles all interactions with the file.
 This means that we can use the faster, synchronous I/O operations.
 Also, compaction, compression, etc. don't cause jank in the rest of the app.
 Only the necessary data is transferred to the main isolate.
@@ -95,7 +95,7 @@ Only the necessary data is transferred to the main isolate.
 ## Data layout
 
 Most operating systems load files in chunks of around 4 KiB. Most databases use a chunk size of 4 KiB or a multiple of that.  
-Cassette also organizes its data in those chunks, which allows for updating the data structure and inserting data in the middle (well, actually at the end but the extra indirection abstracts from the actual layout).
+Chest also organizes its data in those chunks, which allows for updating the data structure and inserting data in the middle (well, actually at the end but the extra indirection abstracts from the actual layout).
 
 There are a few types of chunks:
 
@@ -182,15 +182,15 @@ Note that the `@Index` annotations can only be used on types that are registered
 Some primitive types like `String` and `int` could already implement them:
 
 ```dart
-// Keys. Contained in Cassette.
+// Keys. Contained in Chest.
 extension StringKey on String {
-  Bytes toBytes() => utf8.encode(this);
+  Bytes toKeyBytes() => utf8.encode(this);
 }
 extension IntKey on int {
-  Bytes toBytes() => ...;
+  Bytes toKeyBytes() => ...;
 }
 
-cassette
+Chest
   ..registerKeyType<String>((string) => string.toKey())
   ..registerKeyType<int>((value) => value.toKey());
 
@@ -203,7 +203,7 @@ extension FancyStringIndex on IndexedProperty<String> {
 }
 ```
 
-Cassette could declare that it runs after <kbd>tapegen</kbd> and *also* handle classes annotated with `@TapeClass`.
+Chest could declare that it runs after <kbd>tapegen</kbd> and handle fields annotated with `@Index`.
 Based on the `User` above, this class could get generated:
 
 ```dart

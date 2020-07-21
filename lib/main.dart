@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:tape/tape.dart';
@@ -11,7 +10,7 @@ void main() async {
 
   print('Hello world.');
 
-  final chunky = await Chunky.named('sample');
+  final chunky = await Chunky.named('sample.chest');
   var index = 0;
   var bucket = BucketChunk();
   chunky.transaction((chunky) {

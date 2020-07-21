@@ -25,11 +25,11 @@ It does have some disadvantages though:
 * It doesn't scale. For large datasets, holding all values in memory isn't possible.
 * Compaction takes time. This makes the database unpredictable – similar to how in most garbage-collected languages, the program is completely stopped for a moment to look for unused objects, compaction can also cause unpredictable spikes in resource exhausting. That's not as bad as garbage collection, because it doesn't stop everything (I/O is asynchronous, but it still takes more time to guarantee that a value has been written to disk).
 
-## Cassette's approach
+## Chest's approach
 
 For big amounts of data, it's not viable to simply throw out everything and rebuild the database from scratch.
 To be able to do incremental updates, chunks are introduced. They are contiguous slices of memory of a certain size.
-Cassette's lowest layer – chunky – provides an abstraction from these chunks so you can atomically write to multiple chunks.
+Chest's lowest layer – chunky – provides an abstraction from these chunks so you can atomically write to multiple chunks.
 
 ```dart
 final chunky = await Chunky.named('sample');
@@ -55,5 +55,5 @@ await chunky.transaction((chunky) async {
 ```
 
 As you see, all writes happen inside transactions and chunks cannot be modified, only completely rewritten to disk.
-Before the changes are actually applied to the `sample.cassette` file, they are written to a second `sample.transaction.cassette` file.
+Before the changes are actually applied to the `sample.chest` file, they are written to a second `sample.chest.transaction` file.
 So, a chunk is actually written two times. The benefit is that writing becomes atomic: If the program crashes while writing a change, the change has already been writing to the transaction file, so it can be restored.

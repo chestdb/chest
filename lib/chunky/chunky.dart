@@ -18,8 +18,8 @@ import 'sync_file.dart';
 class Chunky {
   Chunky.named(String name)
       : this(
-          chunkFile: SyncFile('$name.cassette'),
-          transactionFile: SyncFile('$name.transaction.cassette'),
+          chunkFile: SyncFile(name),
+          transactionFile: SyncFile('$name.transaction'),
         );
 
   Chunky({@required this.chunkFile, @required this.transactionFile}) {
