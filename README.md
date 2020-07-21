@@ -40,7 +40,7 @@ So, I believe that using pure Dart puts Chest in a very unique position in that 
 You should be able to open a collection inside a database/box and get and set records easily:
 
 ```dart
-final box = Cassete.box('data.bin');
+final box = Chest.box('sample');
 final users = box.collection<String, String>('users');
 users['foo'] = 'bar';
 users['foo'] = 'baz';
