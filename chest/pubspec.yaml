@@ -4,9 +4,7 @@ dependencies:
   meta: any
   convert: any
   tape:
-    path: ../tape/tape
+    path: ../../tape/tape
 
 dev_dependencies:
   build_runner: any
-  tapegen:
-    path: ../tape/tapegen
