@@ -1,0 +1,4 @@
+name: chesttools_core
+
+dependencies:
+  vm_service: any

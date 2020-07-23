@@ -1,0 +1,25 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "meta",
+      "rootUri": "file:///C:/Users/marce/AppData/Roaming/Pub/Cache/hosted/pub.dartlang.org/meta-1.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "1.12"
+    },
+    {
+      "name": "vm_service",
+      "rootUri": "file:///C:/Users/marce/AppData/Roaming/Pub/Cache/hosted/pub.dartlang.org/vm_service-4.1.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.6"
+    },
+    {
+      "name": "chesttools_core",
+      "rootUri": "../",
+      "packageUri": "lib/"
+    }
+  ],
+  "generated": "2020-07-23T15:14:46.627284Z",
+  "generator": "pub",
+  "generatorVersion": "2.9.0-21.2.beta"
+}

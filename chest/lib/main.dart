@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:developer';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:tape/tape.dart';
 
+import 'buckets.dart';
+import 'chest.dart';
 import 'chunky/chunk.dart';
 import 'chunky/chunky.dart';
 
@@ -9,56 +14,16 @@ void main() async {
   Tape.registerDartCoreAdapters();
 
   print('Hello world.');
-
-  final chunky = await Chunky.named('sample.chest');
-  var index = 0;
-  var bucket = BucketChunk();
-  chunky.transaction((chunky) {
-    chunky.write(0, bucket.chunk);
-  });
+  final chest = VmChest('👋🏻');
+  await Future.delayed(Duration(seconds: 2));
 
   while (true) {
-    var object = generateObject();
-    try {
-      bucket.add(object);
-    } catch (e) {
-      print('Bucket $index full (${bucket.objects.length}): ${bucket.chunk}');
-      bucket = BucketChunk()..add(object);
-      index++;
-      chunky.transaction((chunky) => chunky.write(index, bucket.chunk));
-    }
-    await Future.delayed(Duration(seconds: 1));
+    print('Adding object.');
+    chest.add(generateObject());
+    await Future.delayed(Duration(seconds: 2));
   }
-}
 
-class BucketChunk {
-  final chunk = Chunk.empty();
-  final objects = <Object, List<int>>{};
-
-  int get usedBytes =>
-      1 +
-      objects.values.fold(0, (sum, bytes) => sum + bytes.length) +
-      objects.length * 2;
-  int get freeBytes => chunkSize - usedBytes;
-
-  void add(Object obj) {
-    final bytes = tape.encode(obj);
-    if (objects.length >= 256 || bytes.length > freeBytes) {
-      throw "Doesn't fit.";
-    }
-    objects[obj] = bytes;
-    chunk.setUint8(0, objects.length);
-
-    var pointerCursor = 1;
-    var objectCursor = chunkSize;
-
-    for (final bytes in objects.values) {
-      objectCursor -= bytes.length;
-      chunk.setUint16(pointerCursor, objectCursor);
-      chunk.setBytes(objectCursor, bytes);
-      pointerCursor += 2;
-    }
-  }
+  return;
 }
 
 dynamic generateObject() {
