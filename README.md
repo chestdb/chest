@@ -120,9 +120,9 @@ Sometimes, data is just too big – not just too big to fit into an existing par
 These look like this:
 
 ```
-next chunk id | padding            | soooooooooooooooooooooooooooo many bytes |
-next chunk id | padding            | mooooooooooooooooooooooooooooooore bytes |
-chunk id zero | length of the data | some data |                              |
+0 | next chunk id  | soooooooooooooooooooooooooooooooooooooooooooo many bytes |
+0 | next chunk id  | mooooooooooooooooooooooooooooooooooooooooooooooore bytes |
+1 | length of data | some data |                                              |
 ```
 
 ### Index chunk
