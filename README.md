@@ -1,6 +1,6 @@
 # Chest
 
-A database.
+A database that values developer experience.
 
 ## In memory or not?
 
@@ -87,53 +87,42 @@ It should have some tabs, which contain useful functionality:
 
 ## General architecture
 
-Each `Chest.box` call creates a new `Isolate` that handles all interactions with the file.
+Each `Chest.open` call creates a new `Isolate` that handles all interactions with the file.
 This means that we can use the faster, synchronous I/O operations.
-Also, compaction, compression, etc. don't cause jank in the rest of the app.
+Also, CPU-heavy tasks like compression don't cause jank in the rest of the app.
+And the debugging tooling can inspect which isolates are opened and communicate with all of them separately, making it easy to debug them.
 Only the necessary data is transferred to the main isolate.
+
+Objects stored in Chest are called *documents*, or just *docs* for short.
+
+While users access documents using a key, Chest actually has a hidden layer of indirection: The key is first mapped to a document id, which is simply an 64-bit integer.
+Using the id, the actual document can be looked up.
+The reason for this is that keys can get pretty long, so it's impractical to use it to reference the document in indizes.
+Ids are short and have a constant size, which saves lots of memory in those places.
+In fact, ids are unique in the whole `Chest` and all documents are internally stored in a single tree structure, which makes cross-collection queries possible.
+
+TODO: Think about id re-use after removing documents.
+
+With this in mind, collections merely become a mapping between keys and (a subset of all) document ids.
+To do that efficiently, they maintain a B-tree structure.
+
+TODO: Or do they contain a radix tree?
 
 ## Data layout
 
 Most operating systems load files in chunks of around 4 KiB. Most databases use a chunk size of 4 KiB or a multiple of that.  
 Chest also organizes its data in those chunks, which allows for updating the data structure and inserting data in the middle (well, actually at the end but the extra indirection abstracts from the actual layout).
 
-There are a few types of chunks:
+These are some chunk types:
 
-### Data chunks
-
-A data chunk holds one or multiple records.
-Those chunks start with the offsets of the data as well as the lengths of them.
-New records are added at the end so that both a large number of small chunks as well as a small number of large chunks can be handled gracefully.
-
-Storage layout of a partially filled data chunk, one with many small records and one with few big records:
-
-```
-header 1 | header 2 |                                       | data 2 | data 1 |
-header 1 | header 2 | header 3 | header 4 | data 4 | data 3 | data 2 | data 1 |
-header 1 | header 2 | really really large data 2 | really really large data 1 |
-```
-
-### Big data chunks
-
-Sometimes, data is just too big – not just too big to fit into an existing partially-filled chunk, but even too big to fit into a completely new chunk. In this case, it needs to be split up and saved in multiple chunks.
-
-These look like this:
-
-```
-0 | next chunk id  | soooooooooooooooooooooooooooooooooooooooooooo many bytes |
-0 | next chunk id  | mooooooooooooooooooooooooooooooooooooooooooooooore bytes |
-1 | length of data | some data |                                              |
-```
-
-### Index chunk
-
-Data needs to be accessed based on a key or a property of the value.
-These data are organized in a B⁺-tree so that access works in O(log n).
-
-The layout of those still needs to be figured out.
-
-```
-```
+- `MainChunk` is the first chunk and the entry point for most actions.
+- `FreeChunk` is a chunk that is empty and free to re-use.
+- `BucketChunk`s can hold multiple documents.
+- `BigDocChunk` can hold documents that are too large to fit into a single chunk. It's then split up and saved in multiple `BigDocChunk`s.
+- `BigDocEndChunk` marks the end of a chain of `BigDocChunk`s.
+- `DocTreeChunk` is a node in the document tree.
+- `CollectionTreeChunk` is a node in a key tree.
+- `IndexTreeChunk` is a node in an index tree.
 
 ## Queries
 
