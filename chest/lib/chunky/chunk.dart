@@ -16,11 +16,14 @@ class Chunk {
   final Uint8List _list;
 
   Uint8List get bytes => _list;
+  ByteBuffer get buffer => _list.buffer;
 
   void setUint8(int offset, int value) => _data.setUint8(offset, value);
   int getUint8(int offset) => _data.getUint8(offset);
   void setUint16(int offset, int value) => _data.setUint16(offset, value);
   int getUint16(int offset) => _data.getUint16(offset);
+  void setInt64(int offset, int value) => _data.setInt64(offset, value);
+  int getInt64(int offset) => _data.getInt64(offset);
 
   void setBytes(int offset, List<int> bytes) {
     for (var i = 0; i < bytes.length; i++) {

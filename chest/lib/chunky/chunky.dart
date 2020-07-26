@@ -6,6 +6,8 @@ import 'package:meta/meta.dart';
 import 'chunk.dart';
 import 'sync_file.dart';
 
+export 'chunk.dart';
+
 /// [Chunky] offers low-level primitives of loading parts of a file (so-called
 /// "chunks") into memory, and writing in atomic batches. Those chunks all have
 /// the same size [chunkSize].
