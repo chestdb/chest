@@ -9,8 +9,9 @@ class Chunk {
   Chunk._(this._data, this._list)
       : assert(_data.lengthInBytes == chunkSize),
         assert(_list.length == chunkSize);
-  Chunk(ByteData data) : this._(data, Uint8List.view(data.buffer));
-  Chunk.empty() : this(ByteData(chunkSize));
+  Chunk() : this.fromByteData(ByteData(chunkSize));
+  Chunk.fromByteData(this._data) : _list = Uint8List.view(_data.buffer);
+  Chunk.fromUint8List(this._list) : _data = ByteData.view(_list.buffer);
 
   final ByteData _data;
   final Uint8List _list;

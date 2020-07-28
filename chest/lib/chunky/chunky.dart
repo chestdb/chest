@@ -50,13 +50,6 @@ class Chunky {
       ..readChunkInto(chunk);
   }
 
-  /// Returns a new [Chunk] representing the chunk at the specified [index].
-  Chunk read(int index) {
-    final chunk = Chunk.empty();
-    readInto(index, chunk);
-    return chunk;
-  }
-
   void _write(int index, Chunk chunk) {
     chunkFile
       ..goToIndex(index)
@@ -158,14 +151,6 @@ class ChunkyTransaction {
     }
   }
 
-  Chunk read(int index) {
-    assert(!_isCommitted);
-
-    final chunk = Chunk.empty();
-    readInto(index, chunk);
-    return chunk;
-  }
-
   void write(int index, Chunk chunk) {
     assert(!_isCommitted);
 
@@ -185,7 +170,7 @@ class ChunkyTransaction {
   }
 
   void _commit() {
-    final chunkBuffer = Chunk.empty();
+    final chunkBuffer = Chunk();
     _transactionFile
       ..flush()
       ..goTo(0)
@@ -219,7 +204,7 @@ class ChunkyTransaction {
     }
 
     // Restore the committed transaction.
-    final chunkBuffer = Chunk.empty();
+    final chunkBuffer = Chunk();
     final length = transactionFile.length();
     var position = 1;
 

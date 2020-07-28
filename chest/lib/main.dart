@@ -1,14 +1,8 @@
-import 'dart:convert';
-import 'dart:developer';
-import 'dart:isolate';
 import 'dart:math';
 
 import 'package:tape/tape.dart';
 
-import 'buckets.dart';
-import 'chest.dart';
-import 'chunky/chunk.dart';
-import 'chunky/chunky.dart';
+import 'vm_chest/vm_chest.dart';
 
 void main() async {
   Tape.registerDartCoreAdapters();
@@ -17,11 +11,12 @@ void main() async {
   final chest = VmChest('👋🏻');
   await Future.delayed(Duration(seconds: 2));
 
-  while (true) {
-    print('Adding object.');
-    chest.add(generateObject());
-    await Future.delayed(Duration(seconds: 2));
-  }
+  chest.put([1, 2, 3, 4, 5], generateObject());
+
+  // while (true) {
+  //   print('Adding object.');
+  //   await Future.delayed(Duration(seconds: 2));
+  // }
 
   return;
 }
