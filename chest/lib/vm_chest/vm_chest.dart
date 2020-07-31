@@ -95,7 +95,8 @@ class _ChestVmBackend {
       _chunky.transaction((chunky) {
         MainChunk(_chunk).apply();
         chunky.write(0, _chunk);
-        DocTreeChunk(_chunk).apply();
+
+        // DocTreeChunk(_chunk).apply();
         chunky.write(1, _chunk);
       });
     }

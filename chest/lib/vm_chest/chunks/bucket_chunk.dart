@@ -1,6 +1,8 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:chest/chunky/chunky.dart';
+import 'package:meta/meta.dart';
 
 import 'utils.dart';
 
@@ -11,70 +13,146 @@ import 'utils.dart';
 /// # Layout
 ///
 /// ```
-/// | 1  | num | header 1    | header 2    | padding         | data 2 | data 1 |
-/// |    |     | id | offset | id | offset |                 |        |        |
-/// | 1B | 2B  | 8B | 2B     | 8B | 2B     | fill            | var    | var    |
+/// | type | num | header 1    | header 2    | padding       | data 2 | data 1 |
+/// |      |     | id | offset | id | offset |               |        |        |
+/// | 1B   | 2B  | 8B | 2B     | 8B | 2B     | fill          | var    | var    |
 /// ```
-extension BucketChunk on Chunk {
-  static const type = 1;
+class BucketChunk {
+  final Chunk chunk;
 
-  int _getNumObjects() => getUint16(1);
-  void _setNumObjects(int n) => setUint16(1, n);
+  BucketChunk(this.chunk);
 
-  int _getDocIdByIndex(int index) => getDocId(3 + 10 * index);
-  void _setDocIdByIndex(int index, int docId) =>
-      setDocId(3 + 10 * index, docId);
+  int get _numDocs => chunk.getUint16(1);
+  set _numDocs(int value) => chunk.setUint16(1, value);
 
-  int _getDocOffset(int index) => getOffset(11 + 10 * index);
-  void _setDocOffset(int index, int offset) =>
-      setOffset(11 + 10 * index, offset);
+  static const _headerEntryLength = docIdLength + offsetLength;
 
-  int _getDocEnd(int index) => (index == _getNumObjects() - 1)
-      ? chunkSize
-      : getOffset(11 + 10 * (index));
+  int _getDocId(int index) => chunk.getDocId(3 + _headerEntryLength * index);
+  void _setDocId(int index, int id) =>
+      chunk.setDocId(3 + _headerEntryLength * index, id);
 
-  int get _freeBytes {
-    final numObjects = _getNumObjects();
-    final headerEnd = 3 + 10 * numObjects;
-    final dataBegin = _getDocOffset(numObjects - 1);
-    return dataBegin - headerEnd;
+  int _getOffset(int index) => chunk.getOffset(11 + _headerEntryLength * index);
+  void _setOffset(int index, int offset) =>
+      chunk.setOffset(11 + _headerEntryLength * index, offset);
+
+  int _getIndexOfId(int docId) => binarySearch(_numDocs, _getDocId, docId);
+  int _getOffsetOfId(int docId) => _getOffset(_getIndexOfId(docId));
+
+  bool contains(int docId) => _getIndexOfId(docId) != null;
+  bool get isEmpty => _numDocs == 0;
+  bool get isNotEmpty => _numDocs > 0;
+
+  int get _freeSpaceStart => 3 + _headerEntryLength * _numDocs;
+  int get _freeSpaceEnd => isEmpty ? chunkSize : _getOffset(_numDocs - 1);
+  int get _freeSpace => _freeSpaceEnd - _freeSpaceStart;
+  bool doesFit(int length) => _freeSpace >= _headerEntryLength + length;
+
+  Uint8List get(int docId) {
+    final index = _getIndexOfId(docId);
+    if (index == null) {
+      return null;
+    }
+    final dataStart = _getOffset(index);
+    final dataEnd = (index == _numDocs - 1) ? chunkSize : _getOffset(index + 1);
+    final length = dataEnd - dataStart;
+    final bytes = Uint8List(length);
+    chunk.getBytes(dataStart, length);
+    return bytes;
   }
 
-  Uint8List getDocView(int docId) {
-    final numObjects = _getNumObjects();
+  void add(int docId, List<int> docBytes) {
+    assert(!contains(docId),
+        'This chunk already contains a document with id $docId.');
+    assert(doesFit(docBytes.length), 'Not enough space.');
 
-    var index = 0;
-    while (_getDocIdByIndex(index) != docId) {
-      index++;
-      if (index >= numObjects) {
-        // This bucket doesn't contain the document with the given id.
-        return null;
+    final headerOffset = _freeSpaceStart;
+    final dataOffset = _freeSpaceEnd - docBytes.length;
+    chunk
+      ..setDocId(headerOffset, docId)
+      ..setOffset(headerOffset + 8, dataOffset)
+      ..setBytes(dataOffset, docBytes);
+    _numDocs++;
+  }
+
+  void remove(int docId) {
+    assert(contains(docId));
+
+    final numDocs = _numDocs;
+    final index = _getIndexOfId(docId);
+    var previousEnd = index == 0 ? chunkSize : _getOffset(index - 1);
+
+    for (var i = index + 1; i < numDocs; i++) {
+      final start = _getOffset(i);
+      final end = _getOffset(i - 1);
+      final length = end - start;
+      final newStart = previousEnd - length;
+
+      for (var j = 0; j < length; j++) {
+        final byte = chunk.getUint8(start + j);
+        chunk.setUint8(newStart + j, byte);
       }
+      _setDocId(i - 1, _getDocId(i));
+      _setOffset(i - 1, newStart);
+      previousEnd = newStart;
     }
+    _numDocs--;
+  }
+}
 
-    final start = _getDocOffset(index);
-    final end = _getDocEnd(index);
-    return Uint8List.view(bytes.buffer, start, end - start);
+class Bucket {
+  int _numFreeBytes;
+  Map<int, List<int>> _docsById;
+
+  Bucket.fromChunk(Chunk chunk) {
+    final numObjects = chunk.getUint16(1);
+    final headers = <MapEntry<int, int>>[
+      for (var i = 0; i < numObjects; i++)
+        MapEntry<int, int>(
+          chunk.getUint16(3 + 10 * i),
+          chunk.getOffset(11 + 10 * i),
+        ),
+    ];
+
+    final headersEnd = 3 + 10 * numObjects;
+    final dataBegin = headers.map((oi) => oi.value).reduce(min);
+    _numFreeBytes = dataBegin - headersEnd;
+
+    _docsById = <int, List<int>>{};
+    for (var i = 0; i < numObjects; i++) {
+      final header = headers[i];
+      final start = header.value;
+      final end = i == numObjects - 1 ? chunkSize : headers[i + 1].value;
+      _docsById[header.key] =
+          List.from(Uint8List.view(chunk.buffer, start, end));
+    }
   }
 
-  bool addDoc(int docId, List<int> docBytes) {
-    if (_freeBytes < docBytes.length + 10) {
-      return false;
+  void intoChunk(Chunk chunk) {
+    chunk..setUint16(1, _docsById.length);
+    var dataPointer = chunkSize;
+    final docs = _docsById.entries.toList()..sort((a, b) => a.key - b.key);
+    for (var i = 0; i < docs.length; i++) {
+      final doc = docs[i];
+      var dataStart = dataPointer - doc.value.length - 1;
+      chunk
+        ..setDocId(3 + 10 * i, doc.key)
+        ..setOffset(11 + 10 * i, dataStart)
+        ..setBytes(dataStart, doc.value);
     }
-    final index = _getNumObjects();
-    final dataEnd = index == 0 ? chunkSize : _getDocOffset(index - 1);
-    final dataStart = dataEnd - docBytes.length;
-
-    writeCopy(docBytes, dataStart);
-    _setDocIdByIndex(index, docId);
-    _setDocOffset(index, dataStart);
-    _setNumObjects(index + 1);
-
-    return true;
   }
 
-  bool removeDoc(int docId) {
-    // TODO: implement
-    throw UnimplementedError();
+  bool contains(int docId) => _docsById.containsKey(docId);
+  bool doesFit(List<int> docBytes) => _numFreeBytes > docBytes.length + 10;
+
+  void add(int docId, List<int> docBytes) {
+    assert(!contains(docId));
+    assert(doesFit(docBytes));
+    _docsById[docId] = docBytes;
+  }
+
+  void update(int docId, List<int> docBytes) {
+    assert(contains(docId));
+    assert(_numFreeBytes > docBytes.length - _docsById[docId].length);
+    _docsById[docId] = docBytes;
   }
 }

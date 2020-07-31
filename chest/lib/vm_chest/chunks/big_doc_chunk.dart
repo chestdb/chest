@@ -17,6 +17,10 @@ import 'utils.dart';
 /// | 2  | next chunk id | data                                                |
 /// | 1B | 8B            | fill                                                |
 /// ```
+// class BigDocPart {
+//   int nextChunkId;
+//   List<int> bytes;
+// }
 extension BigDocChunk on Chunk {
   static const type = 2;
 

@@ -42,3 +42,29 @@ extension ChunkUtils on Chunk {
     }
   }
 }
+
+const chunkIdLength = 8;
+const docIdLength = 8;
+const offsetLength = 2;
+
+int binarySearch(int length, int Function(int) keyByIndex, int key) {
+  // print('Searching for $key in length $length.');
+  var min = 0;
+  var max = length;
+  while (min < max) {
+    // print('min=$min, max=$max');
+    int mid = min + ((max - min) >> 1);
+    final currentItem = keyByIndex(mid);
+    final res = currentItem.compareTo(key);
+    // print('Result of comparing $currentItem to $key is $res');
+    if (res == 0) {
+      return mid;
+    } else if (res < 0) {
+      min = mid + 1;
+    } else {
+      max = mid;
+    }
+  }
+  // print('Binary search didnt find the value. min=$min max=$max');
+  return null;
+}
