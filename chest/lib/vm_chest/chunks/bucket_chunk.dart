@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:chest/chunky/chunky.dart';
 import 'package:meta/meta.dart';
 
+import 'chunks.dart';
 import 'utils.dart';
 
 /// A chunk that can store multiple documents.
@@ -17,23 +18,25 @@ import 'utils.dart';
 /// |      |     | id | offset | id | offset |               |        |        |
 /// | 1B   | 2B  | 8B | 2B     | 8B | 2B     | fill          | var    | var    |
 /// ```
-class BucketChunk {
+class BucketChunk extends ChunkWrapper {
   final Chunk chunk;
 
-  BucketChunk(this.chunk);
+  BucketChunk(this.chunk) {
+    chunk.type = ChunkTypes.bucket;
+  }
 
-  int get _numDocs => chunk.getUint16(1);
-  set _numDocs(int value) => chunk.setUint16(1, value);
+  int get _numDocs => getUint16(1);
+  set _numDocs(int value) => setUint16(1, value);
 
   static const _headerEntryLength = docIdLength + offsetLength;
 
-  int _getDocId(int index) => chunk.getDocId(3 + _headerEntryLength * index);
+  int _getDocId(int index) => getDocId(3 + _headerEntryLength * index);
   void _setDocId(int index, int id) =>
-      chunk.setDocId(3 + _headerEntryLength * index, id);
+      setDocId(3 + _headerEntryLength * index, id);
 
-  int _getOffset(int index) => chunk.getOffset(11 + _headerEntryLength * index);
+  int _getOffset(int index) => getOffset(11 + _headerEntryLength * index);
   void _setOffset(int index, int offset) =>
-      chunk.setOffset(11 + _headerEntryLength * index, offset);
+      setOffset(11 + _headerEntryLength * index, offset);
 
   int _getIndexOfId(int docId) => binarySearch(_numDocs, _getDocId, docId);
   int _getOffsetOfId(int docId) => _getOffset(_getIndexOfId(docId));
@@ -56,7 +59,7 @@ class BucketChunk {
     final dataEnd = (index == _numDocs - 1) ? chunkSize : _getOffset(index + 1);
     final length = dataEnd - dataStart;
     final bytes = Uint8List(length);
-    chunk.getBytes(dataStart, length);
+    getBytes(dataStart, length);
     return bytes;
   }
 
@@ -67,10 +70,9 @@ class BucketChunk {
 
     final headerOffset = _freeSpaceStart;
     final dataOffset = _freeSpaceEnd - docBytes.length;
-    chunk
-      ..setDocId(headerOffset, docId)
-      ..setOffset(headerOffset + 8, dataOffset)
-      ..setBytes(dataOffset, docBytes);
+    setDocId(headerOffset, docId);
+    setOffset(headerOffset + 8, dataOffset);
+    setBytes(dataOffset, docBytes);
     _numDocs++;
   }
 
@@ -89,7 +91,7 @@ class BucketChunk {
 
       for (var j = 0; j < length; j++) {
         final byte = chunk.getUint8(start + j);
-        chunk.setUint8(newStart + j, byte);
+        setUint8(newStart + j, byte);
       }
       _setDocId(i - 1, _getDocId(i));
       _setOffset(i - 1, newStart);
