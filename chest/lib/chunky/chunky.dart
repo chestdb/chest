@@ -151,6 +151,14 @@ class ChunkyTransaction {
     }
   }
 
+  /// Do not use unless you're absolutely certain that this is what you want.
+  /// This method is super inefficient.
+  Chunk read(int index) {
+    final chunk = Chunk();
+    readInto(index, chunk);
+    return chunk;
+  }
+
   void write(int index, Chunk chunk) {
     assert(!_isCommitted);
 
