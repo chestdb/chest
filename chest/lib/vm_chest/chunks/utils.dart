@@ -68,3 +68,22 @@ int binarySearch(int length, int Function(int) keyByIndex, int key) {
   // print('Binary search didnt find the value. min=$min max=$max');
   return null;
 }
+
+abstract class ChunkWrapper implements Chunk {
+  Chunk get chunk;
+
+  ByteBuffer get buffer => chunk.buffer;
+  Uint8List get bytes => chunk.bytes;
+
+  int getUint8(int offset) => chunk.getUint8(offset);
+  void setUint8(int offset, int value) => chunk.setUint8(offset, value);
+
+  int getUint16(int offset) => chunk.getUint16(offset);
+  void setUint16(int offset, int value) => chunk.setUint16(offset, value);
+
+  int getInt64(int offset) => chunk.getInt64(offset);
+  void setInt64(int offset, int value) => chunk.setInt64(offset, value);
+
+  List<int> getBytes(int offset, int length) => chunk.getBytes(offset, length);
+  void setBytes(int offset, List<int> bytes) => chunk.setBytes(offset, bytes);
+}
