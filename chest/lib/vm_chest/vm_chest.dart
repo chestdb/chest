@@ -93,7 +93,7 @@ class _ChestVmBackend {
 
     if (_chunky.numberOfChunks == 0) {
       _chunky.transaction((chunky) {
-        MainChunk(_chunk).apply();
+        // MainChunk(_chunk).apply();
         chunky.write(0, _chunk);
 
         // DocTreeChunk(_chunk).apply();
