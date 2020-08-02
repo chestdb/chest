@@ -4,6 +4,7 @@ import 'package:chest/chunky/chunky.dart';
 
 import 'utils.dart';
 
+/*
 /// A chunk that stores part of a document that is so large that it doesn't fit
 /// into a single chunk.
 ///
@@ -50,3 +51,4 @@ extension BigDocEndChunk on Chunk {
 
   void getDataView() => Uint8List.view(buffer, 9, _getLength());
 }
+*/
