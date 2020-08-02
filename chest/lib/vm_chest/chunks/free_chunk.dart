@@ -7,8 +7,8 @@ import 'utils.dart';
 /// # Layout
 ///
 /// ```
-/// | 0  | next free chunk id | garbage                                        |
-/// | 1B | 8B                 | fill                                           |
+/// | type | next free chunk id | garbage                                      |
+/// | 1B   | 8B                 | fill                                         |
 /// ```
 extension FreeChunk on Chunk {
   static const type = 0;

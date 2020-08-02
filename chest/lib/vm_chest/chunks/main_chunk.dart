@@ -7,8 +7,8 @@ import 'utils.dart';
 /// # Layout
 ///
 /// ```
-/// | 42 | first free chunk | doc tree root | padding                          |
-/// | 1B | 8B               | 8B            | fill                             |
+/// | type | first free chunk | doc tree root | padding                          |
+/// | 1B   | 8B               | 8B            | fill                             |
 /// ```
 extension MainChunk on Chunk {
   static const type = 42;
