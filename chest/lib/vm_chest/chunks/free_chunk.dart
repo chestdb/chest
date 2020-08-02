@@ -1,5 +1,6 @@
 import 'package:chest/chunky/chunky.dart';
 
+import 'chunks.dart';
 import 'utils.dart';
 
 /// A chunk that contains no functional data and is free to re-use.
@@ -10,9 +11,13 @@ import 'utils.dart';
 /// | type | next free chunk id | garbage                                      |
 /// | 1B   | 8B                 | fill                                         |
 /// ```
-extension FreeChunk on Chunk {
-  static const type = 0;
+class FreeChunk extends ChunkWrapper {
+  FreeChunk(this.chunk) {
+    chunk.type = ChunkTypes.free;
+  }
 
-  int getNextChunkId() => getChunkId(1);
-  void setNextChunkId(int id) => setChunkId(1, id);
+  final Chunk chunk;
+
+  int get nextChunkId => chunk.getChunkId(1);
+  set nextChunkId(int id) => chunk.setChunkId(1, id);
 }
