@@ -11,8 +11,8 @@ import 'package:chest/chunky/chunky.dart';
 /// | 1B | fill                                                                |
 /// ```
 extension TypedChunk on Chunk {
-  int getType() => getUint8(0);
-  void setType(int type) => setUint8(0, type);
+  int get type => getUint8(0);
+  set type(int type) => setUint8(0, type);
 }
 
 extension ChunkUtils on Chunk {
