@@ -153,6 +153,7 @@ class ChunkyTransaction {
 
   /// Do not use unless you're absolutely certain that this is what you want.
   /// This method is super inefficient.
+  @Deprecated('This is really inefficient.')
   Chunk read(int index) {
     final chunk = Chunk();
     readInto(index, chunk);
