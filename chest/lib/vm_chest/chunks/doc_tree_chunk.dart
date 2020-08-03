@@ -166,16 +166,20 @@ class InternalNode extends Node {
       print('Child underflows.');
       final childLeftSibling = getChildLeftSibling(key);
       final childRightSibling = getChildRightSibling(key);
+      print('childLeftSibling: $childLeftSibling, '
+          'childRightSibling: $childRightSibling');
       final left = childLeftSibling ?? child;
       final right = childLeftSibling != null ? child : childRightSibling;
       left.merge(right);
-      deleteChild(right.firstLeafKey);
+      print('left: $left, right: $right');
+      deleteChild(right.numKeys == 0 ? key : right.firstLeafKey);
       if (left.overflows) {
         final sibling = left.split();
         insertChild(sibling.firstLeafKey, sibling);
+        sibling.write();
       }
       left.write();
-      right.write();
+      // right.write();
       write();
       if (tree.root.numKeys == 0) {
         tree.root = left;
@@ -197,7 +201,7 @@ class InternalNode extends Node {
     }
     if (tree.root.overflows) {
       final sibling = split();
-      final rootIndex = tree.chunky.add(Chunk());
+      final rootIndex = tree.chunky.add(DocTreeInternalNodeChunk(Chunk()));
       final newRoot = InternalNode(tree, rootIndex)
         ..keys.add(sibling.firstLeafKey)
         ..children.addAll([index, sibling.index]);
@@ -223,7 +227,7 @@ class InternalNode extends Node {
   Node split() {
     final from = numKeys ~/ 2 + 1;
     final to = numKeys;
-    final siblingIndex = tree.chunky.add(Chunk());
+    final siblingIndex = tree.chunky.add(DocTreeInternalNodeChunk(Chunk()));
     final sibling = InternalNode(tree, siblingIndex)
       ..keys.addAll(keys.sublist(from, to))
       ..children.addAll(children.sublist(from, to + 1));

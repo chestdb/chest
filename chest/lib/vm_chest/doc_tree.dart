@@ -44,8 +44,11 @@ class InternalNode<V> extends Node<V> {
       final childRightSibling = getChildRightSibling(key);
       final left = childLeftSibling ?? child;
       final right = childLeftSibling != null ? child : childRightSibling;
+      print('Merging $left with $right.');
       left.merge(right);
-      deleteChild(right.firstLeafKey);
+      print('Merged. Right is now $right.');
+      // deleteChild(right.firstLeafKey);
+      deleteChild(right.numKeys == 0 ? key : right.firstLeafKey);
       if (left.overflows) {
         final sibling = left.split();
         insertChild(sibling.firstLeafKey, sibling);
@@ -103,6 +106,8 @@ class InternalNode<V> extends Node<V> {
 
   void deleteChild(int key) {
     int loc = _binarySearch(keys, key);
+    print('Deleting child for key $key at loc $loc. Keys are $keys and '
+        'children are $children.');
     if (loc >= 0) {
       keys.removeAt(loc);
       children.removeAt(loc + 1);

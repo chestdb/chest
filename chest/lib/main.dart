@@ -15,10 +15,13 @@ void main() async {
         chunky.add(MainChunk(Chunk()));
       }
       final tree = DocTree(chunky);
-
-      for (var i = 1; i <= 6; i++) {
+      for (var i = 1; i <= 7; i++) {
         print('> Adding $i');
         tree.insert(i, i);
+        if (i % 3 == 0) {
+          print('> Removing $i');
+          tree.delete(i);
+        }
       }
       print('Done.');
       throw 'Do not complete transaction.';
@@ -40,30 +43,18 @@ void main() async {
 
   // return;
 
-  final tree = Tree<String>();
-  print(tree);
-  tree.insert(1, 'one');
-  print(tree);
-  tree.insert(2, 'two');
-  print(tree);
-  tree.insert(3, 'three');
-  print(tree);
-  tree.insert(4, 'four');
-  print(tree);
-  tree.delete(2);
-  print(tree);
-  tree.insert(5, 'five');
-  print(tree);
-  tree.insert(6, 'six');
-  print(tree);
-  tree.insert(7, 'seven');
-  print(tree);
-  print(tree.find(1));
-  print(tree.find(2));
-  print(tree.find(3));
-  print(tree.find(4));
-  print(tree.find(5));
-  print(tree.find(6));
+  final tree = Tree<int>();
+  for (var i = 1; i <= 7; i++) {
+    print('> Adding $i');
+    tree.insert(i, i);
+    print(tree);
+    if (i % 3 == 0) {
+      print('> Removing $i');
+      tree.delete(i);
+      print(tree);
+    }
+  }
+  print('Done.');
   return;
 
   Tape.registerDartCoreAdapters();
