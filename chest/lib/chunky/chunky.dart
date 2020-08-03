@@ -164,9 +164,12 @@ class ChunkyTransaction {
     assert(!_isCommitted);
 
     _transactionFile
+      ..goToEnd()
       ..writeInt(index)
       ..writeChunk(chunk);
     _changedChunks[index] = _transactionFile.length() - chunkSize;
+    // print('Transaction file length is now ${_transactionFile.length()}. '
+    //     'Changed: $_changedChunks');
     _numberOfChunks = max(_numberOfChunks, index + 1);
   }
 
