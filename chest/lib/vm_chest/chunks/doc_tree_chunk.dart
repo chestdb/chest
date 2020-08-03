@@ -137,7 +137,7 @@ class InternalNode extends Node {
     for (var i = 0; i < chunk.numChildren; i++) {
       children.add(chunk.getChild(i));
     }
-    print('Read $index: $this');
+    print('Read $index:  $this');
   }
 
   void write() {
@@ -187,9 +187,13 @@ class InternalNode extends Node {
     // debugger();
     final child = getChild(key);
     child.insertValue(key, value);
+    print('Does node overflow? ${child.overflows}');
     if (child.overflows) {
       final sibling = child.split();
+      print('Split. Inserting child.');
       insertChild(sibling.firstLeafKey, sibling);
+      sibling.write();
+      child.write();
     }
     if (tree.root.overflows) {
       final sibling = split();
@@ -198,7 +202,10 @@ class InternalNode extends Node {
         ..keys.add(sibling.firstLeafKey)
         ..children.addAll([index, sibling.index]);
       tree.root = newRoot;
+      sibling.write();
+      newRoot.write();
     }
+    write();
   }
 
   int get firstLeafKey =>
@@ -297,7 +304,7 @@ class LeafNode extends Node {
     for (var i = 0; i < chunk.numChildren; i++) {
       values.add(chunk.getChild(i));
     }
-    print('Read $index: $this');
+    print('Read $index:  $this');
   }
 
   void write() {
@@ -341,6 +348,7 @@ class LeafNode extends Node {
       keys.insert(valueIndex, key);
       values.insert(valueIndex, value);
     }
+    print('Number of values in leaf node: ${values.length}.');
     if (tree.root.overflows) {
       print('Node is overflowing.');
       LeafNode sibling = split();
