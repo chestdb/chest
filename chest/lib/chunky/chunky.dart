@@ -114,7 +114,7 @@ class Chunky {
 ///   file (after the transaction is committed), the commit bit is set, so the
 ///   changes are written to the chunk file on the next startup.
 ///
-/// For more information, read
+/// For more information, read https://en.wikipedia.org/wiki/Write-ahead_logging.
 class ChunkyTransaction {
   ChunkyTransaction._(this._chunky) {
     // Prepare the file by setting the commit byte to 0 and removing the rest.
