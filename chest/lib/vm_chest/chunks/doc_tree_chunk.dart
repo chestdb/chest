@@ -81,15 +81,20 @@ class DocTree {
     if (rootIndex == 0) {
       final chunk = DocTreeLeafNodeChunk(Chunk());
       rootIndex = chunky.add(chunk);
-      print('Tree added at $rootIndex');
       mainChunk.docTreeRoot = chunky.add(Chunk());
     }
     root = LeafNode(this, rootIndex);
-    print('Root is $root');
   }
 
   final ChunkyTransaction chunky;
-  Node root;
+
+  Node get root => _root;
+  set root(Node val) {
+    _root = val;
+    print('Root set to ${val.index}.');
+  }
+
+  Node _root;
 
   int find(int key) => root.getValue(key);
   void insert(int key, int value) => root.insertValue(key, value);
@@ -161,17 +166,12 @@ class InternalNode extends Node {
   void deleteValue(int key) {
     final child = getChild(key);
     child.deleteValue(key);
-    print('Deleted $key from child.');
     if (child.underflows) {
-      print('Child underflows.');
       final childLeftSibling = getChildLeftSibling(key);
       final childRightSibling = getChildRightSibling(key);
-      print('childLeftSibling: $childLeftSibling, '
-          'childRightSibling: $childRightSibling');
       final left = childLeftSibling ?? child;
       final right = childLeftSibling != null ? child : childRightSibling;
       left.merge(right);
-      print('left: $left, right: $right');
       deleteChild(right.numKeys == 0 ? key : right.firstLeafKey);
       if (left.overflows) {
         final sibling = left.split();
@@ -180,6 +180,7 @@ class InternalNode extends Node {
       }
       left.write();
       // right.write();
+      print('Free ${right.index}');
       write();
       if (tree.root.numKeys == 0) {
         tree.root = left;
@@ -191,10 +192,8 @@ class InternalNode extends Node {
     // debugger();
     final child = getChild(key);
     child.insertValue(key, value);
-    print('Does node overflow? ${child.overflows}');
     if (child.overflows) {
       final sibling = child.split();
-      print('Split. Inserting child.');
       insertChild(sibling.firstLeafKey, sibling);
       sibling.write();
       child.write();
@@ -352,15 +351,9 @@ class LeafNode extends Node {
       keys.insert(valueIndex, key);
       values.insert(valueIndex, value);
     }
-    print('Number of values in leaf node: ${values.length}.');
     if (tree.root.overflows) {
-      print('Node is overflowing.');
       LeafNode sibling = split();
-      print('Split into $this and $sibling.');
       final newRootIndex = tree.chunky.add(DocTreeInternalNodeChunk(Chunk()));
-      print('New root is at $newRootIndex.');
-      print('The key is ${sibling.firstLeafKey}.');
-      print('The children are $index and ${sibling.index}.');
       final newRoot = InternalNode(tree, newRootIndex)
         ..keys.add(sibling.firstLeafKey)
         ..children.addAll([index, sibling.index]);
