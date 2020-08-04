@@ -74,6 +74,7 @@ abstract class ChunkWrapper implements Chunk {
 
   ByteBuffer get buffer => chunk.buffer;
   Uint8List get bytes => chunk.bytes;
+  ByteData get byteData => chunk.byteData;
 
   int getUint8(int offset) => chunk.getUint8(offset);
   void setUint8(int offset, int value) => chunk.setUint8(offset, value);
@@ -84,6 +85,9 @@ abstract class ChunkWrapper implements Chunk {
   int getInt64(int offset) => chunk.getInt64(offset);
   void setInt64(int offset, int value) => chunk.setInt64(offset, value);
 
-  List<int> getBytes(int offset, int length) => chunk.getBytes(offset, length);
+  Uint8List getBytes(int offset, int length) => chunk.getBytes(offset, length);
   void setBytes(int offset, List<int> bytes) => chunk.setBytes(offset, bytes);
+
+  void copyTo(Chunk other) => chunk.copyTo(other);
+  void copyFrom(Chunk other) => chunk.copyFrom(other);
 }
