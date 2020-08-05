@@ -1,73 +1,57 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:convert/convert.dart';
 import 'package:meta/meta.dart';
 
-import 'chunk.dart';
-import 'sync_file.dart';
+import 'files.dart';
 
-export 'chunk.dart';
+part 'chunk.dart';
+
+// Assumptions:
+// - Transactions concern few chunks. All the accessed chunks fit into memory.
+
+typedef TransactionCallback<T> = FutureOr<T> Function(Transaction);
 
 /// [Chunky] offers low-level primitives of loading parts of a file (so-called
 /// "chunks") into memory, and writing in atomic batches. Those chunks all have
-/// the same size [chunkSize].
+/// the same size: [chunkSize].
 ///
 /// [Chunky] actually manages two files:
-/// - The chunk file holds the actual chunk data (that can be a lot of data).
-/// - The transaction file holds all changes of the currently running
-///   transaction as well as a byte indicating whether the transaction is
-///   committed (aka ready to be applied to the chunk file).
+/// - The chunk file holds the actual chunk data (this can be a lot of data).
+/// - The transaction file holds all changes of the currently applied
+///   transaction.
 class Chunky {
-  Chunky.named(String name)
-      : this(
+  Chunky._(this._chunkFile, this._transactionFile);
+
+  Chunky.fromFiles({
+    @required SyncFile chunkFile,
+    @required SyncFile transactionFile,
+  }) : this._(ChunkFile(chunkFile), TransactionFile(transactionFile));
+
+  Chunky(String name)
+      : this.fromFiles(
           chunkFile: SyncFile(name),
           transactionFile: SyncFile('$name.transaction'),
         );
 
-  Chunky({@required this.chunkFile, @required this.transactionFile}) {
-    final length = chunkFile.length();
-    assert(length % chunkSize == 0);
-    _numberOfChunks = length ~/ chunkSize;
-
-    ChunkyTransaction.restoreIfCommitted(transactionFile, chunkFile);
-  }
-
-  final SyncFile chunkFile;
-  final SyncFile transactionFile;
-
-  /// How many chunks the chunk file contains.
-  int get numberOfChunks => _numberOfChunks;
-  int _numberOfChunks;
+  final ChunkFile _chunkFile;
+  final TransactionFile _transactionFile;
+  final _chunkDataPool = ChunkDataPool();
 
   var _transactionFuture = Future<void>.value();
   var _transactionQueueLength = 0;
   bool get _isTransactionQueueEmpty => _transactionQueueLength == 0;
 
-  /// Reads the chunk at the specified [index] into the provided [chunk].
-  void readInto(int index, Chunk chunk) {
-    chunkFile
-      ..goToIndex(index)
-      ..readChunkInto(chunk);
-  }
-
-  void _write(int index, Chunk chunk) {
-    chunkFile
-      ..goToIndex(index)
-      ..writeChunk(chunk);
-    _numberOfChunks = max(_numberOfChunks, index + 1);
-  }
-
-  void _flush() => chunkFile.flush();
-
-  /// Runs a transaction, in which writes can happen.
-  Future<T> transaction<T>(FutureOr<T> Function(ChunkyTransaction) callback) {
+  Future<T> transaction<T>(TransactionCallback callback) {
     final previousFuture = _transactionFuture;
     final completer = Completer<T>();
     _transactionFuture = completer.future;
     _transactionQueueLength++;
 
     return previousFuture.then((_) async {
-      final transaction = ChunkyTransaction._(this);
+      final transaction =
+          Transaction._(_chunkFile, _transactionFile, _chunkDataPool);
       T result;
       try {
         result = await callback(transaction);
@@ -80,98 +64,112 @@ class Chunky {
     });
   }
 
+  // TODO(marcelgarus): What exactly does it mean to close chunky?
   Future<void> close() async {
     while (!_isTransactionQueueEmpty) {
       await _transactionFuture;
     }
-    chunkFile.close();
-    transactionFile.close();
+    _chunkFile.file.close();
+    _transactionFile.file.close();
   }
 }
 
-/// Writes don't get applied to the chunk file directly, because the program may
-/// be aborted while writing, causing changes to be partially written to the
-/// file. That's why during a transaction, the changes are written to a separate
-/// transaction file, which has the following format:
-///
-/// | commit byte | index | chunk data | index chunk data | ... |
-///
-/// The commit byte indicates whether the changes are ready to be applied to the
-/// actual chunk file (it's 0 or 255). For each change, the chunk index and
-/// chunk data are saved.
-///
-/// Initially, the commit byte is zero. During the transaction, the changes are
-/// added to the transaction file. Once the transaction is done, the commit
-/// byte is set to 255. Then, the changes are applied to the chunk file.
-/// When chunky is started and the transaction file's commit byte is set to 255,
-/// the changes are automatically applied to the chunk file.
-///
-/// So, why are the operations atomic?
-/// - If the program gets aborted while a transaction is running (so, before
-///   it's committed), the commit byte is not set, so the changes are not
-///   applied on the next startup.
-/// - If the program gets aborted while the changes are written to the chunk
-///   file (after the transaction is committed), the commit bit is set, so the
-///   changes are written to the chunk file on the next startup.
-///
-/// For more information, read https://en.wikipedia.org/wiki/Write-ahead_logging.
-class ChunkyTransaction {
-  ChunkyTransaction._(this._chunky) {
-    // Prepare the file by setting the commit byte to 0 and removing the rest.
-    _transactionFile
-      ..clear()
-      ..goTo(0)
-      ..writeByte(0);
-    _numberOfChunks = _chunky.numberOfChunks;
-  }
+class Transaction {
+  Transaction._(this._chunkFile, this._transactionFile, this._pool);
 
-  final Chunky _chunky;
-  SyncFile get _transactionFile => _chunky.transactionFile;
+  final ChunkFile _chunkFile;
+  final TransactionFile _transactionFile;
+  final _pool;
 
-  /// A map from chunk indizes to byte offsets in the transaction file.
-  final _changedChunks = <int, int>{};
-  bool _isCommitted = false;
+  final _originalChunks = <int, ChunkData>{};
+  final _newChunks = <int, TransactionChunk>{};
 
   /// How many chunks the chunk file contains.
   int get numberOfChunks => _numberOfChunks;
   int _numberOfChunks;
 
-  void readInto(int index, Chunk chunk) {
-    assert(!_isCommitted);
-
-    // Depending on whether the chunk was changed in this transaction, get the
-    // changed one from the transaction file or the original one from the chunk
-    // file.
-    if (_changedChunks.containsKey(index)) {
-      _transactionFile
-        ..goTo(_changedChunks[index])
-        ..readChunkInto(chunk);
-    } else {
-      _chunky.readInto(index, chunk);
-    }
-  }
-
-  /// Do not use unless you're absolutely certain that this is what you want.
-  /// This method is super inefficient.
-  @Deprecated('This is really inefficient.')
-  Chunk read(int index) {
-    final chunk = Chunk();
-    readInto(index, chunk);
+  TransactionChunk add() {
+    final index = _numberOfChunks;
+    final chunk = TransactionChunk(index, _pool.reserve());
+    _newChunks[index] = chunk;
     return chunk;
   }
 
-  void write(int index, Chunk chunk) {
-    assert(!_isCommitted);
+  Chunk operator [](int index) {
+    if (_newChunks.containsKey(index)) {
+      return _newChunks[index];
+    }
+    final originalChunk = _pool.reserve();
+    final newChunk = _pool.reserve();
 
-    _transactionFile
-      ..goToEnd()
-      ..writeInt(index)
-      ..writeChunk(chunk);
-    _changedChunks[index] = _transactionFile.length() - chunkSize;
-    // print('Transaction file length is now ${_transactionFile.length()}. '
-    //     'Changed: $_changedChunks');
-    _numberOfChunks = max(_numberOfChunks, index + 1);
+    _chunkFile.readChunkInto(index, originalChunk);
+    _originalChunks[index] = originalChunk;
+
+    newChunk.copyFrom(originalChunk);
+    final chunk = TransactionChunk(index, newChunk);
+    _newChunks[index] = chunk;
+
+    return chunk;
   }
+
+  void _commit() {
+    final differentChunks = _newChunks.entries
+        .where((entry) =>
+            !_originalChunks.containsKey(entry.key) || entry.value.isDirty)
+        .where((entry) => entry.value._data != _originalChunks[entry.key])
+        .toList();
+    _transactionFile.start();
+    for (final entry in differentChunks) {
+      _transactionFile.addChange(entry.key, entry.value._data);
+    }
+    _transactionFile.commit();
+    for (final entry in differentChunks) {
+      _chunkFile.writeChunk(entry.key, entry.value._data);
+    }
+    _chunkFile.file.flush();
+    _transactionFile.start();
+  }
+
+  static restoreIfCommitted(
+    ChunkFile _chunkFile,
+    TransactionFile _transactionFile,
+  ) {
+    if (!_transactionFile.isCommitted) {
+      return;
+    }
+
+    final chunk = ChunkData();
+    final reader = _transactionFile.reader;
+    while (!reader.isAtEnd) {
+      final index = reader.next(chunk);
+      _chunkFile.writeChunk(index, chunk);
+    }
+  }
+}
+
+class ChunkDataPool {
+  final _data = <ChunkData>[];
+
+  ChunkData reserve() {
+    return _data.isEmpty ? ChunkData() : _data.removeAt(0);
+  }
+
+  void free(ChunkData chunk) {
+    _data.add(chunk);
+  }
+}
+
+/*
+class Chunky {
+  /// How many chunks the chunk file contains.
+  int get numberOfChunks => _numberOfChunks;
+  int _numberOfChunks;
+}
+
+class ChunkyTransaction {
+  /// How many chunks the chunk file contains.
+  int get numberOfChunks => _numberOfChunks;
+  int _numberOfChunks;
 
   int add(Chunk chunk) {
     assert(!_isCommitted);
@@ -208,25 +206,25 @@ class ChunkyTransaction {
       ..flush();
   }
 
-  static restoreIfCommitted(SyncFile transactionFile, SyncFile chunkFile) {
-    transactionFile.goTo(0);
-    if (transactionFile.length() == 0 || transactionFile.readByte() == 0) {
+  static restoreIfCommitted(SyncFile _transactionFile, SyncFile _chunkFile) {
+    _transactionFile.goTo(0);
+    if (_transactionFile.length() == 0 || _transactionFile.readByte() == 0) {
       // The file doesn't contain a committed transaction.
       return;
     }
 
     // Restore the committed transaction.
     final chunkBuffer = Chunk();
-    final length = transactionFile.length();
+    final length = _transactionFile.length();
     var position = 1;
 
     while (position < length) {
-      final index = transactionFile.readInt();
-      transactionFile.readChunkInto(chunkBuffer);
-      chunkFile
+      final index = _transactionFile.readInt();
+      _transactionFile.readChunkInto(chunkBuffer);
+      _chunkFile
         ..goToIndex(index)
         ..writeChunk(chunkBuffer);
       position += 8 + chunkSize;
     }
   }
-}
+}*/

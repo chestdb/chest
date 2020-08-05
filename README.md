@@ -217,3 +217,51 @@ final someUsers = users.query((user) {
   return user.name.startsWith('Marcel G') | user.age.isBetween(12, 25);
 }).sortedBy((user) => user.age).limitTo(10);
 ```
+
+### Chunky
+
+The lowest layer, chunky, works in a cool way.
+
+Transactions should contain few changes (fit in memory).
+
+```dart
+final chunky = Chunky.named('🌮');
+
+// Transactions are great because of two reasons:
+// - They guarantee consistency between all operations.
+// - They allow the reuse of in-memory buffers, which are quite expensive to
+//   create in Dart.
+
+// You can only access chunks inside transactions. Here's a transaction that
+// increases a counter atomically.
+chunky.transaction((chunky) {
+  // The `chunky` object passed to this lambda is more powerful than the one on
+  // the outside – you can access chunks.
+
+  final chunk = chunky[0];
+  final counter = chunk.getUint8(0);
+  chunk.setUint8(counter + 1);
+});
+
+// Here's a transaction that calculates something based on data from chunks.
+// Note that the in-memory buffer representing the chunk will be re-used in
+// later transactions.
+var sum = chunky.transaction((chunky) {
+  return chunky[0].getUint8(0) + chunky[1].getUint8(0);
+});
+
+// This means that you can't re-use chunks outside of transactions lifespans:
+Chunk fromTransaction;
+chunky.transaction((chunky) {
+  fromTransaction = chunky[0];
+});
+final firstByte = fromTransaction.getUint8(0); // Throws an error.
+
+// If you really need the whole data of the chunk outside of the transaction,
+// you need to copy it (save a snapshot of the live chunk):
+var snapshot = chunky.read((chunky) => chunky[0].snapshot());
+
+// The exception is for debug use cases.
+final snapshot = chunky.debugRead(0);
+chunky.debugReadInto(1, snapshot); // More efficient (no hidden allocation).
+```

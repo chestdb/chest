@@ -1,102 +1,111 @@
-import 'dart:async';
+/*import 'dart:async';
 
-import 'package:chest/chunky/sync_file.dart';
 import 'package:quiver/collection.dart';
 
+import 'files.dart';
 import 'chunky.dart';
-import 'live_chunk.dart';
 
-class CachedChunky implements Chunky {
-  CachedChunky(this.chunky, {int readCacheSize = 16}) {
-    _cache = LruMap<int, Chunk>(maximumSize: readCacheSize);
-  }
+class CachedChunkFile implements ChunkFile {
+  CachedChunkFile(this._file, this._pool);
 
-  final Chunky chunky;
-  LruMap<int, Chunk> _cache;
+  final ChunkFile _file;
+  ChunkFile get chunkFile => _file;
+  SyncFile get file => _file.file;
 
-  @override
-  SyncFile get chunkFile => chunky.chunkFile;
+  ChunkDataPool _pool;
+  _LruMap<int, ChunkData> _cache;
 
   @override
-  SyncFile get transactionFile => chunky.transactionFile;
-
-  @override
-  int get numberOfChunks => chunky.numberOfChunks;
-
-  @override
-  void readInto(int index, Chunk chunk) {
+  void readChunkInto(int index, ChunkData chunk) {
     _cache.putIfAbsent(index, () {
-      final chunk = Chunk();
-      return Chunk.copyOf(chunk);
-    }).copyTo(chunk);
-  }
+      final newChunk = _pool.reserve();
 
-  @override
-  Future<T> transaction<T>(FutureOr<T> Function(ChunkyTransaction) callback) {
-    return chunky.transaction((chunky) {
-      return callback(chunky);
     });
+    // TODO: implement readChunkInto
   }
 
   @override
-  Future<void> close() => chunky.close();
+  void writeChunk(int index, ChunkData chunk) {
+    // TODO: implement writeChunk
+  }
 }
 
-class CachedChunkyTransaction implements ChunkyTransaction {
-  CachedChunkyTransaction(this._chunky, {int cacheSize = 16}) {
-    _cache = LruMap<int, Chunk>();
-    _numberOfChunks = _chunky.numberOfChunks;
+/// A linked list entry.
+class _Linked<T> {
+  T value;
+  _Linked<T> previous;
+  _Linked<T> next;
+}
+
+/// A very simple implementation of an LruMap.
+class _LruMap<K, V> {
+  final _entries = <K, _Linked<V>>{};
+  _Linked<V> _head;
+  _Linked<V> _tail;
+
+  int _maximumLength;
+  int get maximumLength => _maximumLength;
+  set maximumLength(int value) {
+    _maximumLength = value;
+    _shorten();
   }
 
-  final ChunkyTransaction _chunky;
-  LruMap<int, Chunk> _cache;
-
-  int get numberOfChunks => _numberOfChunks;
-  int _numberOfChunks;
-
-  void readInto(int index, Chunk chunk) {
-    _cache.putIfAbsent(index, () {
-      final chunk = Chunk();
-      return Chunk.copyOf(chunk);
-    }).copyTo(chunk);
-  }
-
-  LiveChunk readIntoLive(int index, Chunk chunk) {
-    readInto(index, chunk);
-    return LiveChunk(chunky: this, index: index, chunk: chunk);
-  }
-
-  @Deprecated('This is really inefficient.')
-  Chunk read(int index) {
-    final chunk = Chunk();
-    readInto(index, chunk);
-    return chunk;
-  }
-
-  @Deprecated('This is really inefficient.')
-  LiveChunk readLive(int index) =>
-      LiveChunk(chunky: this, index: index, chunk: read(index));
-
-  void write(int index, Chunk chunk) {
-    if (_cache.containsKey(index)) {
-      _cache[index].copyFrom(chunk);
-    } else {
-      // final nextEvicted = _cache.nextEvicted;
-      // _chunky.write(nextEvicted.key, nextEvicted.value);
-      _cache[index] = Chunk()..copyFrom(chunk);
+  operator [](K key) {
+    final entry = _entries[key];
+    if (entry == null) {
+      return null;
     }
-    // TODO(marcelgarus): Don't always write the chunk directly, but only when necessary (pseudo-code above).
-    _chunky.write(index, chunk);
+    _promote(entry);
+    return entry;
   }
 
-  int add(Chunk chunk) {
-    final index = numberOfChunks;
-    write(index, chunk);
-    return index;
+  operator []=(K key, V value) {
+    var entry = _entries.putIfAbsent(key, () => _create(value));
+    entry.value = value;
+    _promote(entry);
+    _shorten();
   }
 
-  LiveChunk addLive(Chunk chunk) {
-    final index = add(chunk);
-    return LiveChunk(chunky: this, index: index, chunk: chunk);
+  V remove(K key) {
+    final entry = _entries.remove(key);
+    _remove(entry);
+    return entry.value;
   }
-}
+
+  void _shorten() {
+    while (_entries.length > maximumLength) {
+      _removeLru();
+    }
+  }
+
+  void _removeLru() {
+    if (_tail != null) {
+      _remove(_tail);
+    }
+  }
+
+  _Linked<V> _create(V value) {
+    final entry = _Linked()
+      ..value = value
+      ..next = _head;
+    _head?.previous = entry;
+    _head = entry;
+    _tail ??= entry;
+    return entry;
+  }
+
+  void _remove(_Linked<V> entry) {
+    entry
+      ..previous?.next = entry.next
+      ..next?.previous = entry.previous
+      ..previous = null
+      ..next = null;
+  }
+
+  void _promote(_Linked<V> entry) {
+    _remove(entry);
+    entry.next = _head;
+    _head.previous = entry;
+    _head = entry;
+  }
+}*/
