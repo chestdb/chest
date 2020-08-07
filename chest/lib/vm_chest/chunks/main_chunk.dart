@@ -14,7 +14,7 @@ import 'utils.dart';
 class MainChunk extends ChunkWrapper {
   MainChunk(this.chunk) : super(ChunkTypes.main);
 
-  final Chunk chunk;
+  final TransactionChunk chunk;
 
   int get firstFreeChunk => chunk.getChunkIndex(1);
   set firstFreeChunk(int id) => chunk.setChunkIndex(1, id);

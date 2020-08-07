@@ -21,7 +21,7 @@ import 'utils.dart';
 class BucketChunk extends ChunkWrapper {
   BucketChunk(this.chunk) : super(ChunkTypes.bucket);
 
-  final Chunk chunk;
+  final TransactionChunk chunk;
 
   int get _numDocs => chunk.getUint16(1);
   set _numDocs(int value) => chunk.setUint16(1, value);

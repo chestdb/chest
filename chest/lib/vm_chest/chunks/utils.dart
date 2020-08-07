@@ -75,7 +75,7 @@ abstract class ChunkWrapper {
     chunk.type = type;
   }
 
-  Chunk get chunk;
+  TransactionChunk get chunk;
 
   String toString() => chunk.toString();
 }
