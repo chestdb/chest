@@ -5,22 +5,65 @@ import 'package:tape/tape.dart';
 
 import 'chunky/chunky.dart';
 import 'vm_chest/chunks/chunks.dart';
+import 'vm_chest/doc_tree.dart';
 import 'vm_chest/vm_chest.dart';
 
 void main() async {
-  final chunky = Chunky.named('🌮');
+  // final chunky = Chunky('🌮');
+
+  // // Transactions are great because of two reasons:
+  // // - They guarantee consistency between all operations.
+  // // - They allow the reuse of in-memory buffers, which are quite expensive to
+  // //   create in Dart.
+
+  // // You can only access chunks inside transactions. Here's a transaction that
+  // // increases a counter atomically.
+  // await chunky.transaction((chunky) {
+  //   // The `chunky` object passed to this lambda is more powerful than the one on
+  //   // the outside – you can access chunks.
+
+  //   final chunk = chunky[0];
+  //   final counter = chunk.getUint8(0);
+  //   chunk.setUint8(0, counter + 1);
+  // });
+
+  // // Here's a transaction that calculates something based on data from chunks.
+  // // Note that the in-memory buffer representing the chunk will be re-used in
+  // // later transactions.
+  // var sum = await chunky.transaction((chunky) {
+  //   return chunky[0].getUint8(0) + chunky[1].getUint8(0);
+  // });
+  // print(sum);
+
+  // This means that you can't re-use chunks outside of transactions lifespans:
+  // Chunk fromTransaction;
+  // chunky.transaction((chunky) {
+  //   fromTransaction = chunky[0];
+  // });
+  // final firstByte = fromTransaction.getUint8(0); // Throws an error.
+
+// If you really need the whole data of the chunk outside of the transaction,
+// you need to copy it (save a snapshot of the live chunk):
+  // var snapshot = chunky.transaction((chunky) => chunky[0].snapshot());
+
+// The exception is for debug use cases.
+  // final snapshot = chunky.debugRead(0);
+  // chunky.debugReadInto(1, snapshot); // More efficient (no hidden allocation).
+
+  final chunky = Chunky('🌮');
   try {
     chunky.transaction((chunky) {
       if (chunky.numberOfChunks == 0) {
-        chunky.add(MainChunk(Chunk()));
+        // MainChunk(Chunk());
+        chunky.addTyped(ChunkTypes.main);
       }
-      final tree = DocTree(chunky);
+      final map = IntMap(chunky);
       for (var i = 1; i <= 7; i++) {
         print('> Adding $i');
-        tree.insert(i, i);
+        map.insert(i, 42 * i);
         if (i % 3 == 0) {
           print('> Removing $i');
-          tree.delete(i);
+          map.delete(i);
         }
       }
       print('Done.');
@@ -43,27 +86,27 @@ void main() async {
 
   // return;
 
-  final tree = Tree<int>();
-  for (var i = 1; i <= 7; i++) {
-    print('> Adding $i');
-    tree.insert(i, i);
-    print(tree);
-    if (i % 3 == 0) {
-      print('> Removing $i');
-      tree.delete(i);
-      print(tree);
-    }
-  }
-  print('Done.');
-  return;
+  // final tree = Tree<int>();
+  // for (var i = 1; i <= 7; i++) {
+  //   print('> Adding $i');
+  //   tree.insert(i, i);
+  //   print(tree);
+  //   if (i % 3 == 0) {
+  //     print('> Removing $i');
+  //     tree.delete(i);
+  //     print(tree);
+  //   }
+  // }
+  // print('Done.');
+  // return;
 
-  Tape.registerDartCoreAdapters();
+  // Tape.registerDartCoreAdapters();
 
-  print('Hello world.');
-  final chest = VmChest('👋🏻');
-  await Future.delayed(Duration(seconds: 2));
+  // print('Hello world.');
+  // final chest = VmChest('👋🏻');
+  // await Future.delayed(Duration(seconds: 2));
 
-  chest.put([1, 2, 3, 4, 5], generateObject());
+  // chest.put([1, 2, 3, 4, 5], generateObject());
 
   // while (true) {
   //   print('Adding object.');

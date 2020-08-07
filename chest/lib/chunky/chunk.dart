@@ -114,4 +114,6 @@ class TransactionChunk implements Chunk {
   void copyTo(Chunk other) => _data.copyTo(other);
 
   ChunkData snapshot() => ChunkData.copyOf(_data);
+
+  String toString() => _data.toString();
 }

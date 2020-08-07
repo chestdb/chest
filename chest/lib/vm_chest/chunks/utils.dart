@@ -7,8 +7,8 @@ import 'package:chest/chunky/chunky.dart';
 /// # Layout
 ///
 /// ```
-/// | n  | rest                                                                |
-/// | 1B | fill                                                                |
+/// | type | rest                                                              |
+/// | 1B   | fill                                                              |
 /// ```
 extension TypedChunk on Chunk {
   int get type => getUint8(0);
@@ -16,9 +16,9 @@ extension TypedChunk on Chunk {
 }
 
 extension ChunkUtils on Chunk {
-  // The id of a chunk.
-  int getChunkId(int offset) => getInt64(offset);
-  void setChunkId(int offset, int chunkId) => setInt64(offset, chunkId);
+  // The index of a chunk.
+  int getChunkIndex(int offset) => getInt64(offset);
+  void setChunkIndex(int offset, int index) => setInt64(offset, index);
 
   // The id of a document.
   int getDocId(int offset) => getInt64(offset);
@@ -43,7 +43,8 @@ extension ChunkUtils on Chunk {
   }
 }
 
-const chunkIdLength = 8;
+const typeLength = 1;
+const chunkIndexLength = 8;
 const docIdLength = 8;
 const offsetLength = 2;
 
@@ -69,25 +70,12 @@ int binarySearch(int length, int Function(int) keyByIndex, int key) {
   return null;
 }
 
-abstract class ChunkWrapper implements Chunk {
+abstract class ChunkWrapper {
+  ChunkWrapper(int type) {
+    chunk.type = type;
+  }
+
   Chunk get chunk;
 
-  ByteBuffer get buffer => chunk.buffer;
-  Uint8List get bytes => chunk.bytes;
-  ByteData get byteData => chunk.byteData;
-
-  int getUint8(int offset) => chunk.getUint8(offset);
-  void setUint8(int offset, int value) => chunk.setUint8(offset, value);
-
-  int getUint16(int offset) => chunk.getUint16(offset);
-  void setUint16(int offset, int value) => chunk.setUint16(offset, value);
-
-  int getInt64(int offset) => chunk.getInt64(offset);
-  void setInt64(int offset, int value) => chunk.setInt64(offset, value);
-
-  Uint8List getBytes(int offset, int length) => chunk.getBytes(offset, length);
-  void setBytes(int offset, List<int> bytes) => chunk.setBytes(offset, bytes);
-
-  void copyTo(Chunk other) => chunk.copyTo(other);
-  void copyFrom(Chunk other) => chunk.copyFrom(other);
+  String toString() => chunk.toString();
 }

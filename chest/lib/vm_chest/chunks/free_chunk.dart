@@ -12,47 +12,34 @@ import 'utils.dart';
 /// | 1B   | 8B                 | fill                                         |
 /// ```
 class FreeChunk extends ChunkWrapper {
-  FreeChunk(this.chunk) {
-    chunk.type = ChunkTypes.free;
-  }
+  FreeChunk(this.chunk) : super(ChunkTypes.free);
 
   final Chunk chunk;
 
-  int get nextChunkId => chunk.getChunkId(1);
-  set nextChunkId(int id) => chunk.setChunkId(1, id);
+  int get next => chunk.getChunkIndex(1);
+  set next(int id) => chunk.setChunkIndex(1, id);
 }
 
 class ChunkManager {
-  ChunkManager(this.chunky);
+  ChunkManager(this._chunky);
 
-  final ChunkyTransaction chunky;
+  final Transaction _chunky;
 
-  Chunk reserveChunk() {
-    final main = MainChunk(chunky.read(0));
-    final chunk = Chunk();
-    final freeChunkIndex = main.firstFreeChunk;
-    if (freeChunkIndex == 0) {
-      chunky.add(chunk);
+  TransactionChunk reserve() {
+    final main = _chunky.mainChunk;
+
+    if (main.firstFreeChunk == 0) {
+      return _chunky.add();
     } else {
-      chunky.readInto(freeChunkIndex, chunk);
-      final nextFreeChunkIndex = FreeChunk(chunk).nextChunkId;
-      main.firstFreeChunk = nextFreeChunkIndex;
-      chunky.write(0, main);
+      final freeChunk = _chunky[main.firstFreeChunk];
+      main.firstFreeChunk = FreeChunk(freeChunk).next;
+      return freeChunk;
     }
-    return chunk;
   }
 
-  void freeChunk(int index) {
-    final main = MainChunk(chunky.read(0));
-    final freeChunkIndex = main.firstFreeChunk;
-    if (freeChunkIndex == 0) {
-      main.firstFreeChunk = index;
-      chunky.write(0, main);
-    } else {
-      final chunk = FreeChunk(chunky.read(index));
-      chunk.nextChunkId = freeChunkIndex;
-      main.firstFreeChunk = index;
-      chunky..write(index, chunk)..write(0, main);
-    }
+  void free(int index) {
+    final main = _chunky.mainChunk;
+    FreeChunk(_chunky[index]).next = main.firstFreeChunk;
+    main.firstFreeChunk = index;
   }
 }

@@ -225,7 +225,7 @@ The lowest layer, chunky, works in a cool way.
 Transactions should contain few changes (fit in memory).
 
 ```dart
-final chunky = Chunky.named('🌮');
+final chunky = Chunky('🌮');
 
 // Transactions are great because of two reasons:
 // - They guarantee consistency between all operations.
@@ -240,7 +240,7 @@ chunky.transaction((chunky) {
 
   final chunk = chunky[0];
   final counter = chunk.getUint8(0);
-  chunk.setUint8(counter + 1);
+  chunk.setUint8(0, counter + 1);
 });
 
 // Here's a transaction that calculates something based on data from chunks.

@@ -10,6 +10,7 @@ import 'package:chest/chunky/chunky.dart';
 
 import 'bucket_chunk.dart';
 import 'doc_tree_chunk.dart';
+import 'free_chunk.dart';
 import 'main_chunk.dart';
 import 'utils.dart';
 
@@ -19,22 +20,30 @@ class ChunkTypes {
   static const bucket = 2;
   static const bigDoc = 3;
   static const bigDocEnd = 4;
-  static const docTreeInternalNode = 5;
-  static const docTreeLeafNode = 6;
+  static const intMapInternalNode = 5;
+  static const intMapLeafNode = 6;
 }
 
 extension ChunkAbstractions on Chunk {
   T parse<T extends ChunkWrapper>() {
     final abstractions = {
       ChunkTypes.main: (chunk) => MainChunk(chunk),
-      // ChunkIds.free: (chunk) => FreeChunk(chunk),
+      ChunkTypes.free: (chunk) => FreeChunk(chunk),
       ChunkTypes.bucket: (chunk) => BucketChunk(chunk),
-      // ChunkIds.bigDoc: (chunk) => BigDocChunk(chunk),
-      // ChunkIds.bigDocEnd: (chunk) => BigDocEndChunk(chunk),
-      ChunkTypes.docTreeInternalNode: (chunk) =>
-          DocTreeInternalNodeChunk(chunk),
-      ChunkTypes.docTreeLeafNode: (chunk) => DocTreeLeafNodeChunk(chunk),
+      // ChunkTypes.bigDoc: (chunk) => BigDocChunk(chunk),
+      // ChunkTypes.bigDocEnd: (chunk) => BigDocEndChunk(chunk),
+      ChunkTypes.intMapInternalNode: (chunk) => IntMapInternalNodeChunk(chunk),
+      ChunkTypes.intMapLeafNode: (chunk) => IntMapLeafNodeChunk(chunk),
     };
     return abstractions[type](this) as T;
+  }
+}
+
+extension TypedAddingOfChunks on Transaction {
+  TransactionChunk addTyped(int type) {
+    final chunk = add();
+    chunk.type = type;
+    print('Chunk before returning is $chunk.');
+    return chunk;
   }
 }

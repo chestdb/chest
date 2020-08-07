@@ -1,8 +1,7 @@
-import 'dart:convert';
+/*import 'dart:convert';
 import 'dart:developer';
 import 'dart:isolate';
 
-import 'package:chest/chunky/chunk.dart';
 import 'package:chest/chunky/chunky.dart';
 import 'package:tape/tape.dart';
 
@@ -64,7 +63,7 @@ class _ChestVmBackend {
   String _name;
   Chunky _chunky;
   int _index = 0;
-  final _chunk = Chunk();
+  final _chunk = ChunkData();
 
   Future<void> run(SendPort sendPort, ReceivePort receivePort) async {
     _sendPort = sendPort;
@@ -119,4 +118,4 @@ class _ChestVmBackend {
       }));
     });
   }
-}
+}*/

@@ -43,6 +43,8 @@ class Chunky {
   var _transactionQueueLength = 0;
   bool get _isTransactionQueueEmpty => _transactionQueueLength == 0;
 
+  int get numberOfChunks => _chunkFile.numberOfChunks;
+
   Future<T> transaction<T>(TransactionCallback callback) {
     final previousFuture = _transactionFuture;
     final completer = Completer<T>();
@@ -75,7 +77,9 @@ class Chunky {
 }
 
 class Transaction {
-  Transaction._(this._chunkFile, this._transactionFile, this._pool);
+  Transaction._(this._chunkFile, this._transactionFile, this._pool) {
+    _numberOfChunks = _chunkFile.numberOfChunks;
+  }
 
   final ChunkFile _chunkFile;
   final TransactionFile _transactionFile;
@@ -92,6 +96,7 @@ class Transaction {
     final index = _numberOfChunks;
     final chunk = TransactionChunk(index, _pool.reserve());
     _newChunks[index] = chunk;
+    _numberOfChunks++;
     return chunk;
   }
 
@@ -118,6 +123,10 @@ class Transaction {
             !_originalChunks.containsKey(entry.key) || entry.value.isDirty)
         .where((entry) => entry.value._data != _originalChunks[entry.key])
         .toList();
+    print('Changed chunks: $differentChunks');
+    if (differentChunks.isEmpty) {
+      return; // Nothing changed.
+    }
     _transactionFile.start();
     for (final entry in differentChunks) {
       _transactionFile.addChange(entry.key, entry.value._data);

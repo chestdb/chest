@@ -59,6 +59,7 @@ class ChunkFile {
 
   final SyncFile file;
 
+  int get numberOfChunks => file.length() ~/ chunkSize;
   void writeChunk(int index, ChunkData chunk) => file
     ..goTo(index * chunkSize)
     ..writeBytes(chunk.bytes);

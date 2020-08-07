@@ -6,24 +6,45 @@ import 'chunks.dart';
 import 'main_chunk.dart';
 import 'utils.dart';
 
-/// A chunk that is an internal node in the doc tree.
+// To make sense of all the code here, you should first understand B+ trees:
+// https://en.wikipedia.org/wiki/B%2B_tree
+
+// The [IntMap] maps [int]s to [int]s.
+
+// Keys and values are both encoded as 64-bit integers.
+extension on Chunk {
+  int getKey(int offset) => getInt64(offset);
+  void setKey(int offset, int key) => setInt64(offset, key);
+
+  int getChild(int offset) => getChunkIndex(offset);
+  void setChild(int offset, int child) => setChunkIndex(offset, child);
+
+  int getValue(int offset) => getInt64(offset);
+  void setValue(int offset, int value) => setInt64(offset, value);
+}
+
+const _keyLength = 8;
+const _childLength = chunkIndexLength;
+const _valueLength = 8;
+
+/// A chunk that represents an internal node in an [IntMap].
 ///
-/// The keys of the node are the doc ids, the children are the pointed to by the
-/// chunk id. It always contains one more chunk id than doc ids.
+/// The keys of the node are [int]s, the children are indizes of chunks.
 ///
 /// # Layout
 ///
 /// ```
-/// | type | num keys | chunk id | doc id | chunk id | doc id | ... | chunk id |
-/// | 1B   | 2B       | 8B       | 8B     | 8B       | 8B     |     | 8B       |
+/// | type | num keys | child | key | child | key | child | ...  | key | child |
+/// | 1B   | 2B       | 8B    | 8B  | 8B    | 8B  | 8B    |      | 8B  | 8B    |
 /// ```
-/// Note it contains space for one more chunk id than doc ids.
-class DocTreeInternalNodeChunk extends ChunkWrapper {
-  static const maxChildren = (chunkSize - _headerLength) ~/ _entryLength;
+/// Note it always contains one more child than keys.
+class IntMapInternalNodeChunk extends ChunkWrapper {
+  static const _headerLength = 3;
+  static const _entryLength = _keyLength + _childLength;
+  static const maxChildren =
+      (chunkSize - _headerLength - _childLength) ~/ _entryLength + 1;
 
-  DocTreeInternalNodeChunk(this.chunk) {
-    chunk.type = ChunkTypes.docTreeInternalNode;
-  }
+  IntMapInternalNodeChunk(this.chunk) : super(ChunkTypes.intMapInternalNode);
 
   final Chunk chunk;
 
@@ -31,84 +52,84 @@ class DocTreeInternalNodeChunk extends ChunkWrapper {
   set numKeys(int numKeys) => chunk.setUint16(1, numKeys);
   int get numChildren => numKeys == 0 ? 0 : numKeys + 1;
 
-  static const _headerLength = 3;
-  static const _entryLength = chunkIdLength + docIdLength;
+  int getKey(int index) =>
+      chunk.getKey(_headerLength + _childLength + _entryLength * index);
+  void setKey(int index, int key) =>
+      chunk.setKey(_headerLength + _childLength + _entryLength * index, key);
 
   int getChild(int index) =>
-      chunk.getChunkId(_headerLength + _entryLength * index);
-  void setChild(int index, int chunkId) =>
-      chunk.setChunkId(_headerLength + _entryLength * index, chunkId);
-
-  int getKey(int index) =>
-      chunk.getDocId(_headerLength + chunkIdLength + _entryLength * index);
-  void setKey(int index, int docId) => chunk.setDocId(
-      _headerLength + chunkIdLength + _entryLength * index, docId);
+      chunk.getChild(_headerLength + _entryLength * index);
+  void setChild(int index, int child) =>
+      chunk.setChild(_headerLength + _entryLength * index, child);
 }
 
-/// A chunk that is a leaf node in the doc tree.
+/// A chunk that is a leaf node in the [IntMap].
 ///
-/// The keys are doc ids, the values are chunk ids pointing to [BucketChunk]s or
-/// [BigDocChunk]s.
+/// The keys and values are [int]s.
 ///
 /// # Layout
 ///
 /// ```
-/// | type | num keys | chunk id | doc id | chunk id | ...  | doc id | next id |
-/// | 1B   | 2B       | 8B       | 8B     | 8B       |      | 8B     | 8B      |
+/// | type | num keys | next leaf | key | value | ...            | key | value |
+/// | 1B   | 2B       | 8B        | 8B  | 8B    |                | 8B  | 8B    |
 /// ```
-class DocTreeLeafNodeChunk extends DocTreeInternalNodeChunk {
-  static const maxChildren = DocTreeInternalNodeChunk.maxChildren - 1;
+class IntMapLeafNodeChunk extends ChunkWrapper {
+  static const _headerLength = 11;
+  static const _entryLength = _keyLength + _valueLength;
+  static const maxValues = (chunkSize - _headerLength) ~/ _entryLength;
 
-  DocTreeLeafNodeChunk(Chunk chunk) : super(chunk) {
-    chunk.type = ChunkTypes.docTreeLeafNode;
-  }
+  IntMapLeafNodeChunk(this.chunk) : super(ChunkTypes.intMapLeafNode);
 
-  int get numChildren => numKeys;
+  final Chunk chunk;
 
-  static const _nextLeafIdOffset = DocTreeInternalNodeChunk._headerLength +
-      DocTreeInternalNodeChunk._entryLength *
-          (DocTreeInternalNodeChunk.maxChildren - 1);
-  int get nextLeafId => chunk.getChunkId(_nextLeafIdOffset);
-  set nextLeafId(int id) => chunk.setChunkId(_nextLeafIdOffset, id);
+  int get numKeys => chunk.getUint16(1);
+  set numKeys(int numKeys) => chunk.setUint16(1, numKeys);
+  int get numValues => numKeys;
+
+  int get nextLeaf => chunk.getChunkIndex(3);
+  set nextLeaf(int id) => chunk.setChunkIndex(3, id);
+
+  int getKey(int index) => chunk.getKey(_headerLength + _entryLength * index);
+  void setKey(int index, int key) =>
+      chunk.setKey(_headerLength + _entryLength * index, key);
+
+  int getValue(int index) =>
+      chunk.getValue(_headerLength + _entryLength * index + _keyLength);
+  void setValue(int index, int value) =>
+      chunk.setValue(_headerLength + _entryLength * index + _keyLength, value);
 }
 
-int _branchingFactor = 3;
+const _branchingFactor = 3;
 
-class DocTree {
-  DocTree(this.chunky) {
-    final mainChunk = MainChunk(chunky.read(0));
-    var rootIndex = mainChunk.docTreeRoot;
-    if (rootIndex == 0) {
-      final chunk = DocTreeLeafNodeChunk(Chunk());
-      rootIndex = chunky.add(chunk);
-      mainChunk.docTreeRoot = chunky.add(Chunk());
+class IntMap {
+  IntMap(this.chunky) {
+    final mainChunk = chunky.mainChunk;
+    if (mainChunk.docTreeRoot == 0) {
+      final chunk = chunky.addTyped(ChunkTypes.intMapLeafNode);
+      print('Chunk is now $chunk.');
+      print('And the index is ${chunk.index}.');
+      mainChunk.docTreeRoot = chunk.index;
     }
-    root = LeafNode(this, rootIndex);
   }
 
-  final ChunkyTransaction chunky;
+  final Transaction chunky;
 
-  Node get root => _root;
-  set root(Node val) {
-    _root = val;
-    print('Root set to ${val.index}.');
-  }
+  Node get _root => readNode(chunky.mainChunk.docTreeRoot);
+  set _root(Node newRoot) => chunky.mainChunk.docTreeRoot = newRoot.index;
 
-  Node _root;
-
-  int find(int key) => root.getValue(key);
-  void insert(int key, int value) => root.insertValue(key, value);
-  void delete(int key) => root.deleteValue(key);
-  String toString() => root.toString();
+  int find(int key) => _root.getValue(key);
+  void insert(int key, int value) => _root.insertValue(key, value);
+  void delete(int key) => _root.deleteValue(key);
+  String toString() => _root.toString();
 }
 
-extension on ChunkyTransaction {
-  Node readNode(DocTree tree, int index) {
-    final chunk = read(index).parse();
-    if (chunk is DocTreeLeafNodeChunk) {
-      return LeafNode(tree, index);
-    } else if (chunk is DocTreeInternalNodeChunk) {
-      return InternalNode(tree, index);
+extension on IntMap {
+  Node readNode(int index) {
+    final chunk = chunky[index].parse();
+    if (chunk is IntMapLeafNodeChunk) {
+      return LeafNode(this, index);
+    } else if (chunk is IntMapInternalNodeChunk) {
+      return InternalNode(this, index);
     }
     debugger();
     throw 'Chunk found that is neither an internal nor a leaf node but a '
@@ -135,7 +156,7 @@ abstract class Node {
 
 class InternalNode extends Node {
   InternalNode(this.tree, this.index) {
-    final chunk = tree.chunky.read(index).parse<DocTreeInternalNodeChunk>();
+    final chunk = tree.chunky[index].parse<IntMapInternalNodeChunk>();
     for (var i = 0; i < chunk.numKeys; i++) {
       keys.add(chunk.getKey(i));
     }
@@ -146,7 +167,7 @@ class InternalNode extends Node {
   }
 
   void write() {
-    final chunk = DocTreeInternalNodeChunk(Chunk());
+    final chunk = IntMapInternalNodeChunk(tree.chunky[index]);
     chunk.numKeys = keys.length;
     for (var i = 0; i < keys.length; i++) {
       chunk.setKey(i, keys[i]);
@@ -154,11 +175,10 @@ class InternalNode extends Node {
     for (var i = 0; i < children.length; i++) {
       chunk.setChild(i, children[i]);
     }
-    tree.chunky.write(index, chunk);
     print('Wrote $index: $this');
   }
 
-  final DocTree tree;
+  final IntMap tree;
   final int index;
   var children = <int>[];
 
@@ -182,8 +202,8 @@ class InternalNode extends Node {
       // right.write();
       print('Free ${right.index}');
       write();
-      if (tree.root.numKeys == 0) {
-        tree.root = left;
+      if (tree._root.numKeys == 0) {
+        tree._root = left;
       }
     }
   }
@@ -193,26 +213,28 @@ class InternalNode extends Node {
     final child = getChild(key);
     child.insertValue(key, value);
     if (child.overflows) {
+      print('InternalNode: Child $child overflows.');
       final sibling = child.split();
       insertChild(sibling.firstLeafKey, sibling);
       sibling.write();
       child.write();
     }
-    if (tree.root.overflows) {
+    if (tree._root.overflows) {
+      print('InternalNode: Root ${tree._root} overflows.');
       final sibling = split();
-      final rootIndex = tree.chunky.add(DocTreeInternalNodeChunk(Chunk()));
-      final newRoot = InternalNode(tree, rootIndex)
+      final newRootChunk = tree.chunky.add();
+      IntMapInternalNodeChunk(newRootChunk);
+      final newRoot = InternalNode(tree, newRootChunk.index)
         ..keys.add(sibling.firstLeafKey)
         ..children.addAll([index, sibling.index]);
-      tree.root = newRoot;
+      tree._root = newRoot;
       sibling.write();
       newRoot.write();
     }
     write();
   }
 
-  int get firstLeafKey =>
-      tree.chunky.readNode(tree, children.first).firstLeafKey;
+  int get firstLeafKey => tree.readNode(children.first).firstLeafKey;
 
   void merge(Node sibling) {
     final node = sibling as InternalNode;
@@ -226,8 +248,8 @@ class InternalNode extends Node {
   Node split() {
     final from = numKeys ~/ 2 + 1;
     final to = numKeys;
-    final siblingIndex = tree.chunky.add(DocTreeInternalNodeChunk(Chunk()));
-    final sibling = InternalNode(tree, siblingIndex)
+    final siblingChunk = tree.chunky.add();
+    final sibling = InternalNode(tree, siblingChunk.index)
       ..keys.addAll(keys.sublist(from, to))
       ..children.addAll(children.sublist(from, to + 1));
     keys.removeRange(from - 1, to);
@@ -240,7 +262,7 @@ class InternalNode extends Node {
   Node getChild(int key) {
     int loc = _binarySearch(keys, key);
     final childIndex = loc >= 0 ? loc + 1 : -loc - 1;
-    return tree.chunky.readNode(tree, children[childIndex]);
+    return tree.readNode(children[childIndex]);
   }
 
   void deleteChild(int key) {
@@ -266,7 +288,7 @@ class InternalNode extends Node {
     final loc = _binarySearch(keys, key);
     final childIndex = loc >= 0 ? loc + 1 : -loc - 1;
     if (childIndex > 0) {
-      return tree.chunky.readNode(tree, children[childIndex - 1]);
+      return tree.readNode(children[childIndex - 1]);
     } else {
       return null;
     }
@@ -276,7 +298,7 @@ class InternalNode extends Node {
     final loc = _binarySearch(keys, key);
     final childIndex = loc >= 0 ? loc + 1 : -loc - 1;
     if (childIndex < numKeys) {
-      return tree.chunky.readNode(tree, children[childIndex + 1]);
+      return tree.readNode(children[childIndex + 1]);
     } else {
       return null;
     }
@@ -299,31 +321,30 @@ class InternalNode extends Node {
 class LeafNode extends Node {
   LeafNode(this.tree, this.index) {
     // print('Chunk at index $index is ${tree.chunky.read(index)}');
-    final chunk = tree.chunky.read(index).parse<DocTreeLeafNodeChunk>();
+    final chunk = tree.chunky[index].parse<IntMapLeafNodeChunk>();
     // debugger();
     for (var i = 0; i < chunk.numKeys; i++) {
       keys.add(chunk.getKey(i));
     }
-    for (var i = 0; i < chunk.numChildren; i++) {
-      values.add(chunk.getChild(i));
+    for (var i = 0; i < chunk.numValues; i++) {
+      values.add(chunk.getValue(i));
     }
     print('Read $index:  $this');
   }
 
   void write() {
-    final chunk = DocTreeLeafNodeChunk(Chunk());
+    final chunk = tree.chunky[index].parse<IntMapLeafNodeChunk>();
     chunk.numKeys = keys.length;
     for (var i = 0; i < keys.length; i++) {
       chunk.setKey(i, keys[i]);
     }
     for (var i = 0; i < values.length; i++) {
-      chunk.setChild(i, values[i]);
+      chunk.setValue(i, values[i]);
     }
-    tree.chunky.write(index, chunk);
     print('Wrote $index: $this');
   }
 
-  final DocTree tree;
+  final IntMap tree;
   final int index;
   final values = [];
   LeafNode next;
@@ -351,15 +372,18 @@ class LeafNode extends Node {
       keys.insert(valueIndex, key);
       values.insert(valueIndex, value);
     }
-    if (tree.root.overflows) {
+    if (tree._root.overflows) {
+      print('LeafNode: Root ${tree._root} overflows.');
       LeafNode sibling = split();
-      final newRootIndex = tree.chunky.add(DocTreeInternalNodeChunk(Chunk()));
-      final newRoot = InternalNode(tree, newRootIndex)
+      final newRootChunk = tree.chunky.addTyped(ChunkTypes.intMapInternalNode);
+      final newRoot = InternalNode(tree, newRootChunk.index)
         ..keys.add(sibling.firstLeafKey)
         ..children.addAll([index, sibling.index]);
       sibling.write();
       newRoot.write();
-      tree.root = newRoot;
+      tree._root = newRoot;
+    } else {
+      print('LeafNode: Root ${tree._root} does not overflow.');
     }
     write();
   }
@@ -376,9 +400,8 @@ class LeafNode extends Node {
   Node split() {
     final from = (numKeys + 1) ~/ 2;
     final to = numKeys;
-    final siblingChunk = DocTreeLeafNodeChunk(Chunk());
-    final siblingIndex = tree.chunky.add(siblingChunk);
-    final sibling = LeafNode(tree, siblingIndex)
+    final siblingChunk = tree.chunky.addTyped(ChunkTypes.intMapLeafNode);
+    final sibling = LeafNode(tree, siblingChunk.index)
       ..keys.addAll(keys.sublist(from, to))
       ..values.addAll(values.sublist(from, to));
     keys.removeRange(from, to);
