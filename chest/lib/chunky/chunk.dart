@@ -85,9 +85,10 @@ class TransactionChunk implements Chunk {
   bool _isDirty = false;
   bool get isDirty => _isDirty;
 
-  T _makeDirty<T>(T Function() callback) {
+  void _makeDirty(void Function() callback) {
     _isDirty = true;
-    return callback();
+    callback();
+    // print('$index: $_data');
   }
 
   void setUint8(int offset, int value) =>

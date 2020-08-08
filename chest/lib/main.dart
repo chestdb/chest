@@ -52,23 +52,28 @@ void main() async {
 
   final chunky = Chunky('🌮');
   try {
+    chunky.clear();
     chunky.transaction((chunky) {
       if (chunky.numberOfChunks == 0) {
         // MainChunk(Chunk());
         chunky.addTyped(ChunkTypes.main);
       }
-      final map = IntMap(chunky);
-      for (var i = 1; i <= 7; i++) {
-        print('> Adding $i');
-        map.insert(i, 42 * i);
-        if (i % 3 == 0) {
-          print('> Removing $i');
-          map.delete(i);
-        }
-      }
-      print('Done.');
-      throw 'Do not complete transaction.';
     });
+
+    for (var i = 1; i <= 10; i++) {
+      chunky.transaction((chunky) {
+        print('> Adding $i');
+        IntMap(chunky).insert(i, 42 * i);
+      });
+      if (i % 3 == 0) {
+        chunky.transaction((chunky) {
+          print('> Removing $i');
+          IntMap(chunky).delete(i);
+        });
+      }
+    }
+    print('Done.');
+    throw 'Do not complete transaction.';
   } catch (e) {
     return;
   }

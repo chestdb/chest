@@ -20,7 +20,13 @@ class MainChunk extends ChunkWrapper {
   set firstFreeChunk(int id) => chunk.setChunkIndex(1, id);
 
   int get docTreeRoot => chunk.getChunkIndex(9);
-  set docTreeRoot(int id) => chunk.setChunkIndex(9, id);
+  set docTreeRoot(int id) {
+    print('Root node set to $id');
+    chunk.setChunkIndex(9, id);
+  }
+
+  String toString() =>
+      'MainChunk(firstFreeChunk: $firstFreeChunk, docTreeRoot: $docTreeRoot)';
 }
 
 extension MainChunkFromTransaction on Transaction {

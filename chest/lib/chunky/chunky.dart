@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:convert/convert.dart';
 import 'package:meta/meta.dart';
 
+import 'package:chest/vm_chest/chunks/chunks.dart';
+
 import 'files.dart';
 
 part 'chunk.dart';
@@ -66,6 +68,10 @@ class Chunky {
     });
   }
 
+  Future<void> clear() async {
+    _chunkFile.file.clear();
+  }
+
   // TODO(marcelgarus): What exactly does it mean to close chunky?
   Future<void> close() async {
     while (!_isTransactionQueueEmpty) {
@@ -123,7 +129,10 @@ class Transaction {
             !_originalChunks.containsKey(entry.key) || entry.value.isDirty)
         .where((entry) => entry.value._data != _originalChunks[entry.key])
         .toList();
-    print('Changed chunks: $differentChunks');
+    print('Changed chunks:');
+    for (final chunk in differentChunks) {
+      print('${chunk.key}: ${chunk.value.parse()}');
+    }
     if (differentChunks.isEmpty) {
       return; // Nothing changed.
     }

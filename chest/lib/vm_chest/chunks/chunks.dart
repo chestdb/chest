@@ -43,7 +43,6 @@ extension TypedAddingOfChunks on Transaction {
   TransactionChunk addTyped(int type) {
     final chunk = add();
     chunk.type = type;
-    print('Chunk before returning is $chunk.');
     return chunk;
   }
 }

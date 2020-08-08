@@ -19,46 +19,49 @@ import 'utils.dart';
 /// | 1B   | 2B  | 8B | 2B     | 8B | 2B     | fill          | var    | var    |
 /// ```
 class BucketChunk extends ChunkWrapper {
-  BucketChunk(this.chunk) : super(ChunkTypes.bucket);
-
-  final TransactionChunk chunk;
-
-  int get _numDocs => chunk.getUint16(1);
-  set _numDocs(int value) => chunk.setUint16(1, value);
-
   static const _headerEntryLength = docIdLength + offsetLength;
 
-  int _getDocId(int index) => chunk.getDocId(3 + _headerEntryLength * index);
-  void _setDocId(int index, int id) =>
-      chunk.setDocId(3 + _headerEntryLength * index, id);
+  BucketChunk(this.chunk) : super(ChunkTypes.bucket) {
+    _headers = BackedList(
+        setLength: (length) => _numDocs = length,
+        getLength: () => _numDocs,
+        setItem: (index, header) {
+          chunk
+            ..setDocId(3 + _headerEntryLength * index, header.docId)
+            ..setOffset(11 + _headerEntryLength * index, header.offset);
+        },
+        getItem: (index) {
+          return _Header(
+            docId: chunk.getDocId(3 + _headerEntryLength * index),
+            offset: chunk.getOffset(11 + _headerEntryLength * index),
+          );
+        });
+  }
 
-  int _getOffset(int index) => chunk.getOffset(11 + _headerEntryLength * index);
-  void _setOffset(int index, int offset) =>
-      chunk.setOffset(11 + _headerEntryLength * index, offset);
+  final TransactionChunk chunk;
+  List<_Header> _headers;
 
-  int _getIndexOfId(int docId) => binarySearch(_numDocs, _getDocId, docId);
-  int _getOffsetOfId(int docId) => _getOffset(_getIndexOfId(docId));
+  set _numDocs(int value) => chunk.setUint16(1, value);
+  int get _numDocs => chunk.getUint16(1);
 
-  bool contains(int docId) => _getIndexOfId(docId) != null;
-  bool get isEmpty => _numDocs == 0;
-  bool get isNotEmpty => _numDocs > 0;
+  bool contains(int docId) => _headers.findHeader(docId).wasFound;
+  bool get isEmpty => _headers.length == 0;
+  bool get isNotEmpty => !isEmpty;
 
-  int get _freeSpaceStart => 3 + _headerEntryLength * _numDocs;
-  int get _freeSpaceEnd => isEmpty ? chunkSize : _getOffset(_numDocs - 1);
+  int get _freeSpaceStart => 3 + _headerEntryLength * _headers.length;
+  int get _freeSpaceEnd => isEmpty ? chunkSize : (_headers.last.offset - 1);
   int get _freeSpace => _freeSpaceEnd - _freeSpaceStart;
   bool doesFit(int length) => _freeSpace >= _headerEntryLength + length;
 
   Uint8List get(int docId) {
-    final index = _getIndexOfId(docId);
-    if (index == null) {
+    final result = _headers.findHeader(docId);
+    if (result.wasNotFound) {
       return null;
     }
-    final dataStart = _getOffset(index);
-    final dataEnd = (index == _numDocs - 1) ? chunkSize : _getOffset(index + 1);
+    final dataStart = result.item.offset;
+    final dataEnd = result.nextItem?.offset ?? chunkSize;
     final length = dataEnd - dataStart;
-    final bytes = Uint8List(length);
-    chunk.getBytes(dataStart, length);
-    return bytes;
+    return Uint8List.fromList(chunk.getBytes(dataStart, length));
   }
 
   void add(int docId, List<int> docBytes) {
@@ -66,36 +69,49 @@ class BucketChunk extends ChunkWrapper {
         'This chunk already contains a document with id $docId.');
     assert(doesFit(docBytes.length), 'Not enough space.');
 
-    final headerOffset = _freeSpaceStart;
     final dataOffset = _freeSpaceEnd - docBytes.length;
-    chunk
-      ..setDocId(headerOffset, docId)
-      ..setOffset(headerOffset + 8, dataOffset)
-      ..setBytes(dataOffset, docBytes);
-    _numDocs++;
+    chunk.setBytes(dataOffset, docBytes);
+    _headers.insertHeaderSorted(_Header(docId: docId, offset: dataOffset));
   }
 
   void remove(int docId) {
     assert(contains(docId));
 
-    final numDocs = _numDocs;
-    final index = _getIndexOfId(docId);
-    var previousEnd = index == 0 ? chunkSize : _getOffset(index - 1);
+    final result = _headers.findHeader(docId);
+    var deletedEnd = result.previousItem?.offset ?? chunkSize;
 
-    for (var i = index + 1; i < numDocs; i++) {
-      final start = _getOffset(i);
-      final end = _getOffset(i - 1);
-      final length = end - start;
-      final newStart = previousEnd - length;
+    for (var i = result.index; i < _headers.length - 1; i++) {
+      final nextHeader = _headers[i + 1];
 
-      for (var j = 0; j < length; j++) {
-        final byte = chunk.getUint8(start + j);
-        chunk.setUint8(newStart + j, byte);
+      final deletedStart = _headers[i].offset;
+      final nextStart = nextHeader.offset;
+      final nextEnd = deletedStart;
+
+      final nextLength = nextEnd - nextStart;
+
+      final translatedStart = deletedEnd - nextLength;
+
+      for (var j = 0; j < nextLength; j++) {
+        final byte = chunk.getUint8(nextStart + j);
+        chunk.setUint8(translatedStart + j, byte);
       }
-      _setDocId(i - 1, _getDocId(i));
-      _setOffset(i - 1, newStart);
-      previousEnd = newStart;
+      _headers[i] = _Header(docId: nextHeader.docId, offset: translatedStart);
+      deletedEnd = deletedStart;
     }
     _numDocs--;
   }
+}
+
+class _Header {
+  _Header({@required this.docId, @required this.offset});
+
+  final int docId;
+  final int offset;
+}
+
+extension on List<_Header> {
+  SearchResult<_Header> findHeader(int docId) =>
+      find(docId, (header) => header.docId);
+  void insertHeaderSorted(_Header header) =>
+      insertSorted(header, (header) => header.docId);
 }

@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:chest/chunky/chunky.dart';
+import 'package:meta/meta.dart';
 
 import 'chunks.dart';
 import 'main_chunk.dart';
@@ -44,59 +45,65 @@ class IntMapInternalNodeChunk extends ChunkWrapper {
   static const maxChildren =
       (chunkSize - _headerLength - _childLength) ~/ _entryLength + 1;
 
-  IntMapInternalNodeChunk(this.chunk) : super(ChunkTypes.intMapInternalNode);
+  IntMapInternalNodeChunk(this.chunk) : super(ChunkTypes.intMapInternalNode) {
+    keys = BackedList<int>(
+      setLength: (length) => numKeys = length,
+      getLength: () => numKeys,
+      setItem: (index, key) => chunk.setKey(
+          _headerLength + _childLength + _entryLength * index, key),
+      getItem: (index) =>
+          chunk.getKey(_headerLength + _childLength + _entryLength * index),
+    );
+    children = BackedList<int>(
+      setLength: (length) => numKeys = length - 1,
+      getLength: () => numChildren,
+      setItem: (index, child) =>
+          chunk.setChild(_headerLength + _entryLength * index, child),
+      getItem: (index) => chunk.getChild(_headerLength + _entryLength * index),
+    );
+  }
 
   final TransactionChunk chunk;
+  BackedList<int> keys;
+  BackedList<int> children;
 
   int get numKeys => chunk.getUint16(1);
   set numKeys(int numKeys) => chunk.setUint16(1, numKeys);
-  int get numChildren => numKeys == 0 ? 0 : numKeys + 1;
+  int get numChildren => numKeys + 1;
 
-  int getKey(int index) =>
-      chunk.getKey(_headerLength + _childLength + _entryLength * index);
-  Iterable<int> get keys => Iterable.generate(numKeys, getKey);
-  void setKey(int index, int key) =>
-      chunk.setKey(_headerLength + _childLength + _entryLength * index, key);
-  void addKey(int key) => setKey(numKeys++, key);
-  void addKeys(Iterable<int> keys) => keys.forEach(addKey);
-
-  int getChild(int index) =>
-      chunk.getChild(_headerLength + _entryLength * index);
-  Iterable<int> get children => Iterable.generate(numChildren, getChild);
-  void setChild(int index, int child) =>
-      chunk.setChild(_headerLength + _entryLength * index, child);
-  void addChild(int child) => setChild(numKeys++, child);
-  void addChildren(Iterable<int> children) => children.forEach(addChild);
+  void initialize({
+    @required List<int> keys,
+    @required List<int> children,
+  }) {
+    assert(keys.length + 1 == children.length);
+    numKeys = 0;
+    this.children.first = children.first;
+    this.children.addAll(children.sublist(1));
+    numKeys = 0;
+    this.keys.addAll(keys);
+  }
 
   void insertKeyAndChild(int index, int key, int child) {
-    for (var i = numKeys - 1; i > index; i--) {
-      setKey(i, getKey(i - 1));
-    }
-    setKey(index, key);
-    for (var i = numChildren - 1; i > index + 1; i--) {
-      setChild(i, getChild(i - 1));
-    }
-    setChild(index + 1, child);
+    keys.insert(index, key);
+    numKeys--;
+    children.insert(index + 1, child);
   }
 
   void removeKeyAndChildAt(int keyIndex, int childIndex) {
-    for (var i = keyIndex; i < numKeys - 1; i++) {
-      setKey(i, getKey(i + 1));
-    }
-    for (var i = childIndex; i < numChildren - 1; i++) {
-      setChild(i, getChild(i + 1));
-    }
-    numKeys--;
+    print('Removing key at $keyIndex and chlid at $childIndex.');
+    keys.removeAt(keyIndex);
+    numKeys++;
+    children.removeAt(childIndex);
+    print('numKeys is $numKeys');
   }
 
   String toString() {
     final buffer = StringBuffer()..write('[');
-
     for (var i = 0; i < numKeys; i++) {
-      buffer.write('child ${getChild(i)}, ${getKey(i)}, ');
+      buffer.write('child ${children[i]}, ${keys[i]}, ');
     }
     if (numChildren > 0) {
-      buffer.write('child ${getChild(numChildren - 1)}');
+      buffer.write('child ${children.last}');
     }
     buffer.write(']');
     return buffer.toString();
@@ -118,58 +125,50 @@ class IntMapLeafNodeChunk extends ChunkWrapper {
   static const _entryLength = _keyLength + _valueLength;
   static const maxValues = (chunkSize - _headerLength) ~/ _entryLength;
 
-  IntMapLeafNodeChunk(this.chunk) : super(ChunkTypes.intMapLeafNode);
+  IntMapLeafNodeChunk(this.chunk) : super(ChunkTypes.intMapLeafNode) {
+    keys = BackedList<int>(
+      setLength: (length) => numEntries = length,
+      getLength: () => numEntries,
+      setItem: (index, key) =>
+          chunk.setKey(_headerLength + _entryLength * index, key),
+      getItem: (index) => chunk.getKey(_headerLength + _entryLength * index),
+    );
+    values = BackedList<int>(
+      setLength: (length) => numEntries = length,
+      getLength: () => numEntries,
+      setItem: (index, value) => chunk.setValue(
+          _headerLength + _entryLength * index + _keyLength, value),
+      getItem: (index) =>
+          chunk.getValue(_headerLength + _entryLength * index + _keyLength),
+    );
+  }
 
   final TransactionChunk chunk;
+  BackedList<int> keys;
+  BackedList<int> values;
 
-  int get numKeys => chunk.getUint16(1);
-  set numKeys(int numKeys) => chunk.setUint16(1, numKeys);
-  int get numValues => numKeys;
+  int get numEntries => chunk.getUint16(1);
+  set numEntries(int value) => chunk.setUint16(1, value);
 
   int get nextLeaf => chunk.getChunkIndex(3);
   set nextLeaf(int id) => chunk.setChunkIndex(3, id);
 
-  int getKey(int index) => chunk.getKey(_headerLength + _entryLength * index);
-  Iterable<int> get keys => Iterable.generate(numKeys, getKey);
-  void setKey(int index, int key) =>
-      chunk.setKey(_headerLength + _entryLength * index, key);
-  void addKey(int key) => setKey(numKeys++, key);
-  void addKeys(Iterable<int> keys) => keys.forEach(addKey);
-
-  int getValue(int index) =>
-      chunk.getValue(_headerLength + _entryLength * index + _keyLength);
-  Iterable<int> get values => Iterable.generate(numValues, getValue);
-  void setValue(int index, int value) =>
-      chunk.setValue(_headerLength + _entryLength * index + _keyLength, value);
-  void addValue(int value) => setValue(numKeys++, value);
-  void addValues(Iterable<int> values) => values.forEach(addValue);
-
   void insertKeyAndValue(int index, int key, int value) {
-    for (var i = numKeys - 1; i > index; i--) {
-      setKey(i, getKey(i - 1));
-    }
-    setKey(index, key);
-    for (var i = numValues - 1; i > index; i--) {
-      setValue(i, getValue(i - 1));
-    }
-    setValue(index, value);
+    keys.insert(index, key);
+    numEntries--;
+    values.insert(index, value);
   }
 
   void removeKeyAndValueAt(int index) {
-    for (var i = index; i < numKeys - 1; i++) {
-      setKey(i, getKey(i + 1));
-    }
-    for (var i = index; i < numValues - 1; i++) {
-      setValue(i, getValue(i + 1));
-    }
-    numKeys--;
+    keys.removeAt(index);
+    numEntries++;
+    values.removeAt(index);
   }
 
   String toString() {
     final buffer = StringBuffer()..write('{');
-
     buffer.write([
-      for (var i = 0; i < numKeys; i++) '${getKey(i)}: ${getValue(i)}',
+      for (var i = 0; i < numEntries; i++) '${keys[i]}: ${values[i]}',
     ].join(', '));
     buffer.write('}');
     return buffer.toString();
@@ -183,8 +182,6 @@ class IntMap {
     final mainChunk = chunky.mainChunk;
     if (mainChunk.docTreeRoot == 0) {
       final chunk = chunky.addTyped(ChunkTypes.intMapLeafNode);
-      print('Chunk is now $chunk.');
-      print('And the index is ${chunk.index}.');
       mainChunk.docTreeRoot = chunk.index;
     }
   }
@@ -237,28 +234,27 @@ class InternalNode extends Node {
 
   int get index => chunk.chunk.index;
   bool get hasKeys => chunk.numKeys > 0;
-  int get firstLeafKey => tree.readNode(chunk.getChild(0)).firstLeafKey;
+  int get firstLeafKey => tree.readNode(chunk.children.first).firstLeafKey;
   bool get overflows => chunk.numChildren > _branchingFactor;
   bool get underflows => chunk.numChildren < (_branchingFactor / 2).ceil();
 
   int getValue(int key) => getChild(key).getValue(key);
 
   void insertValue(int key, int value) {
+    // debugger(when: key == 5);
     final child = getChild(key);
     child.insertValue(key, value);
     if (child.overflows) {
-      print('InternalNode: Child $child overflows.');
       final sibling = child.split();
       insertChild(sibling.firstLeafKey, sibling);
     }
     if (tree._root.overflows) {
-      print('InternalNode: Root ${tree._root} overflows.');
       final sibling = split();
       final newRootChunk = IntMapInternalNodeChunk(tree.chunky.add())
-        ..setKey(0, sibling.firstLeafKey)
-        ..setChild(0, index)
-        ..setChild(1, sibling.index)
-        ..numKeys = 1;
+        ..initialize(
+          keys: [sibling.firstLeafKey],
+          children: [index, sibling.index],
+        );
       final newRoot = InternalNode(tree, newRootChunk);
       tree._root = newRoot;
     }
@@ -279,7 +275,9 @@ class InternalNode extends Node {
         insertChild(sibling.firstLeafKey, sibling);
       }
       print('Free ${right.index}');
+      debugger(when: key == 9);
       if (!tree._root.hasKeys) {
+        print('Free former root ${tree._root.index}');
         tree._root = left;
       }
     }
@@ -287,27 +285,32 @@ class InternalNode extends Node {
 
   void merge(Node sibling) {
     final node = sibling as InternalNode;
-    chunk.addKeys([
+    final numAddedEntries = node.chunk.numChildren;
+    chunk.keys.addAll([
       node.firstLeafKey,
       ...node.chunk.keys,
     ]);
-    chunk.addChildren(node.chunk.children);
+    chunk.numKeys -= numAddedEntries;
+    chunk.children.addAll(node.chunk.children);
   }
 
   Node split() {
     final splitIndex = chunk.numKeys ~/ 2 + 1;
     final siblingChunk = IntMapInternalNodeChunk(tree.chunky.add())
-      ..addKeys(chunk.keys.skip(splitIndex))
-      ..addChildren(chunk.children.skip(splitIndex));
+      ..initialize(
+        keys: chunk.keys.skip(splitIndex).toList(),
+        children: chunk.children.skip(splitIndex).toList(),
+      );
     chunk.numKeys = splitIndex - 1;
     return InternalNode(tree, siblingChunk);
   }
 
-  SearchResult _searchForKey(int key) => _binarySearch(chunk.keys, key);
+  SearchResult _searchForKey(int key) => chunk.keys.find(key);
 
   Node getChild(int key) {
     final result = _searchForKey(key);
-    return result.wasFound ? tree.readNode(chunk.getChild(result.index)) : null;
+    final index = result.wasFound ? result.index + 1 : result.insertionIndex;
+    return tree.readNode(chunk.children[index]);
   }
 
   void deleteChild(int key) {
@@ -320,7 +323,7 @@ class InternalNode extends Node {
   void insertChild(int key, Node child) {
     final result = _searchForKey(key);
     if (result.wasFound) {
-      chunk.setChild(result.index, child.index);
+      chunk.children[result.index] = child.index;
     } else {
       chunk.insertKeyAndChild(result.insertionIndex, key, child.index);
     }
@@ -329,7 +332,7 @@ class InternalNode extends Node {
   Node getChildLeftSibling(int key) {
     final childIndex = _searchForKey(key).insertionIndex;
     if (childIndex > 0) {
-      return tree.readNode(chunk.getChild(childIndex - 1));
+      return tree.readNode(chunk.children[childIndex - 1]);
     } else {
       return null;
     }
@@ -338,7 +341,7 @@ class InternalNode extends Node {
   Node getChildRightSibling(int key) {
     final childIndex = _searchForKey(key).insertionIndex;
     if (childIndex < chunk.numKeys) {
-      return tree.readNode(chunk.getChild(childIndex + 1));
+      return tree.readNode(chunk.children[childIndex + 1]);
     } else {
       return null;
     }
@@ -354,33 +357,35 @@ class LeafNode extends Node {
   final IntMapLeafNodeChunk chunk;
 
   int get index => chunk.chunk.index;
-  bool get hasKeys => chunk.numKeys > 0;
-  int get firstLeafKey => chunk.getKey(0);
-  bool get overflows => chunk.numValues > _branchingFactor - 1;
-  bool get underflows => chunk.numValues < _branchingFactor ~/ 2;
+  bool get hasKeys => chunk.numEntries > 0;
+  int get firstLeafKey => chunk.keys[0];
+  bool get overflows => chunk.numEntries > _branchingFactor - 1;
+  bool get underflows => chunk.numEntries < _branchingFactor ~/ 2;
 
   // Returns the index of the child that can possibly contains the given key.
   // Doesn't guarantee that the child actually contains that key.
-  SearchResult _searchForKey(int key) => _binarySearch(chunk.keys, key);
+  SearchResult _searchForKey(int key) => chunk.keys.find(key);
 
   int getValue(int key) {
     final result = _searchForKey(key);
-    return result.wasFound ? chunk.getValue(result.index) : null;
+    return result.wasFound ? chunk.values[result.index] : null;
   }
 
   void insertValue(int key, int value) {
     final result = _searchForKey(key);
     if (result.wasFound) {
-      chunk.setValue(result.index, value);
+      chunk.values[result.index] = value;
     } else {
       chunk.insertKeyAndValue(result.insertionIndex, key, value);
     }
     if (tree._root.overflows) {
-      print('LeafNode: Root ${tree._root} overflows.');
       LeafNode sibling = split();
       final newRootChunk = IntMapInternalNodeChunk(tree.chunky.add())
-        ..addKey(sibling.firstLeafKey)
-        ..addChildren([index, sibling.index]);
+        ..keys.add(sibling.firstLeafKey)
+        ..numKeys = 0
+        ..children[0] = index
+        ..children.add(sibling.index)
+        ..numKeys = 1;
       tree._root = InternalNode(tree, newRootChunk);
     } else {
       print('LeafNode: Root ${tree._root} does not overflow.');
@@ -389,6 +394,8 @@ class LeafNode extends Node {
 
   void deleteValue(int key) {
     final result = _searchForKey(key);
+    print('Removing the value for key $key of ${chunk.keys}. Was found? '
+        '${result.wasFound}');
     if (result.wasFound) {
       chunk.removeKeyAndValueAt(result.index);
     }
@@ -396,60 +403,25 @@ class LeafNode extends Node {
 
   void merge(Node sibling) {
     final node = sibling as LeafNode;
-    chunk.addKeys(node.chunk.keys);
-    chunk.addValues(node.chunk.values);
-    chunk.nextLeaf = node.chunk.nextLeaf;
+    chunk
+      ..keys.addAll(node.chunk.keys)
+      ..numEntries -= node.chunk.keys.length
+      ..values.addAll(node.chunk.values)
+      ..nextLeaf = node.chunk.nextLeaf;
   }
 
   Node split() {
-    final from = (chunk.numKeys + 1) ~/ 2;
+    final from = (chunk.numEntries + 1) ~/ 2;
     final siblingChunk = IntMapLeafNodeChunk(tree.chunky.add())
-      ..addKeys(chunk.keys.skip(from))
-      ..addValues(chunk.values.skip(from));
-    final sibling = LeafNode(tree, siblingChunk);
-    chunk.numKeys = from;
-
-    sibling.chunk.nextLeaf = chunk.nextLeaf;
-    chunk.nextLeaf = sibling.index;
-    return sibling;
+      ..keys.addAll(chunk.keys.skip(from))
+      ..numEntries = 0
+      ..values.addAll(chunk.values.skip(from))
+      ..nextLeaf = chunk.nextLeaf;
+    chunk
+      ..numEntries = from
+      ..nextLeaf = siblingChunk.chunk.index;
+    return LeafNode(tree, siblingChunk);
   }
 
   String toString() => chunk.toString();
-}
-
-SearchResult _binarySearch(List<int> list, int key) {
-  int min = 0;
-  int max = list.length;
-  while (min < max) {
-    final mid = min + ((max - min) >> 1);
-    final currentItem = list[mid];
-    final res = currentItem.compareTo(key);
-    // print('Result of comparing $currentItem to $key is $res');
-    if (res == 0) {
-      return SearchResult._(true, mid);
-    } else if (res < 0) {
-      min = mid + 1;
-    } else {
-      max = mid;
-    }
-  }
-  // print('Binary search didnt find the value. min=$min max=$max');
-  return SearchResult._(false, min);
-}
-
-class SearchResult {
-  SearchResult._(this.wasFound, this._index);
-
-  final bool wasFound;
-  bool get wasNotFound => !wasFound;
-
-  final int _index;
-
-  int get index {
-    assert(wasFound);
-    return _index;
-  }
-
-  // The index where the key would be inserted.
-  int get insertionIndex => wasFound ? _index + 1 : _index;
 }
