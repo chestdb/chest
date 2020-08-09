@@ -1,6 +1,6 @@
 export 'big_doc_chunk.dart';
 export 'bucket_chunk.dart';
-export 'doc_tree_chunk.dart';
+export 'int_map.dart';
 export 'free_chunk.dart';
 export 'main_chunk.dart';
 
@@ -9,7 +9,7 @@ import 'dart:typed_data';
 import 'package:chest/chunky/chunky.dart';
 
 import 'bucket_chunk.dart';
-import 'doc_tree_chunk.dart';
+import 'int_map.dart';
 import 'free_chunk.dart';
 import 'main_chunk.dart';
 import 'utils.dart';

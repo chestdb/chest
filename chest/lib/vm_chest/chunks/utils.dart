@@ -39,7 +39,7 @@ extension ChunkUtils on Chunk {
     }
   }
 
-  void clear(int start, int end) {
+  void clear([int start = 0, int end = chunkSize]) {
     for (var i = start; i < end; i++) {
       setUint8(i, 0);
     }

@@ -90,7 +90,7 @@ class IntMapInternalNodeChunk extends ChunkWrapper {
   }
 
   void removeKeyAndChildAt(int keyIndex, int childIndex) {
-    print('Removing key at $keyIndex and chlid at $childIndex.');
+    print('Removing key at $keyIndex and child at $childIndex.');
     keys.removeAt(keyIndex);
     numKeys++;
     children.removeAt(childIndex);
@@ -181,7 +181,8 @@ class IntMap {
   IntMap(this.chunky) {
     final mainChunk = chunky.mainChunk;
     if (mainChunk.docTreeRoot == 0) {
-      final chunk = chunky.addTyped(ChunkTypes.intMapLeafNode);
+      final chunk = chunky.reserve();
+      IntMapLeafNodeChunk(chunk);
       mainChunk.docTreeRoot = chunk.index;
     }
   }
@@ -250,7 +251,7 @@ class InternalNode extends Node {
     }
     if (tree._root.overflows) {
       final sibling = split();
-      final newRootChunk = IntMapInternalNodeChunk(tree.chunky.add())
+      final newRootChunk = IntMapInternalNodeChunk(tree.chunky.reserve())
         ..initialize(
           keys: [sibling.firstLeafKey],
           children: [index, sibling.index],
@@ -274,10 +275,10 @@ class InternalNode extends Node {
         final sibling = left.split();
         insertChild(sibling.firstLeafKey, sibling);
       }
-      print('Free ${right.index}');
+      tree.chunky.free(right.index);
       debugger(when: key == 9);
       if (!tree._root.hasKeys) {
-        print('Free former root ${tree._root.index}');
+        tree.chunky.free(tree._root.index);
         tree._root = left;
       }
     }
@@ -296,7 +297,7 @@ class InternalNode extends Node {
 
   Node split() {
     final splitIndex = chunk.numKeys ~/ 2 + 1;
-    final siblingChunk = IntMapInternalNodeChunk(tree.chunky.add())
+    final siblingChunk = IntMapInternalNodeChunk(tree.chunky.reserve())
       ..initialize(
         keys: chunk.keys.skip(splitIndex).toList(),
         children: chunk.children.skip(splitIndex).toList(),
@@ -380,7 +381,7 @@ class LeafNode extends Node {
     }
     if (tree._root.overflows) {
       LeafNode sibling = split();
-      final newRootChunk = IntMapInternalNodeChunk(tree.chunky.add())
+      final newRootChunk = IntMapInternalNodeChunk(tree.chunky.reserve())
         ..keys.add(sibling.firstLeafKey)
         ..numKeys = 0
         ..children[0] = index
@@ -412,7 +413,7 @@ class LeafNode extends Node {
 
   Node split() {
     final from = (chunk.numEntries + 1) ~/ 2;
-    final siblingChunk = IntMapLeafNodeChunk(tree.chunky.add())
+    final siblingChunk = IntMapLeafNodeChunk(tree.chunky.reserve())
       ..keys.addAll(chunk.keys.skip(from))
       ..numEntries = 0
       ..values.addAll(chunk.values.skip(from))

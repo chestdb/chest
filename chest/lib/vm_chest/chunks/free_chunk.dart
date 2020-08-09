@@ -18,28 +18,26 @@ class FreeChunk extends ChunkWrapper {
 
   int get next => chunk.getChunkIndex(1);
   set next(int id) => chunk.setChunkIndex(1, id);
+
+  String toString() => 'FreeChunk(next: $next)';
 }
 
-class ChunkManager {
-  ChunkManager(this._chunky);
-
-  final Transaction _chunky;
-
+extension ChunkManager on Transaction {
   TransactionChunk reserve() {
-    final main = _chunky.mainChunk;
+    final main = mainChunk;
 
     if (main.firstFreeChunk == 0) {
-      return _chunky.add();
+      return add();
     } else {
-      final freeChunk = _chunky[main.firstFreeChunk];
+      final freeChunk = this[main.firstFreeChunk];
       main.firstFreeChunk = FreeChunk(freeChunk).next;
-      return freeChunk;
+      return freeChunk..clear();
     }
   }
 
   void free(int index) {
-    final main = _chunky.mainChunk;
-    FreeChunk(_chunky[index]).next = main.firstFreeChunk;
+    final main = mainChunk;
+    FreeChunk(this[index]).next = main.firstFreeChunk;
     main.firstFreeChunk = index;
   }
 }
