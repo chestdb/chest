@@ -60,12 +60,12 @@ void main() async {
       }
     });
 
-    for (var i = 1; i <= 10; i++) {
+    for (var i = 1; i <= 100; i++) {
       chunky.transaction((chunky) {
         print('> Adding $i');
         IntMap(chunky).insert(i, 42 * i);
       });
-      if (i % 3 == 0) {
+      if (i % 10 == 0) {
         chunky.transaction((chunky) {
           print('> Removing $i');
           IntMap(chunky).delete(i);

@@ -90,11 +90,9 @@ class IntMapInternalNodeChunk extends ChunkWrapper {
   }
 
   void removeKeyAndChildAt(int keyIndex, int childIndex) {
-    print('Removing key at $keyIndex and child at $childIndex.');
     keys.removeAt(keyIndex);
     numKeys++;
     children.removeAt(childIndex);
-    print('numKeys is $numKeys');
   }
 
   String toString() {
@@ -269,14 +267,14 @@ class InternalNode extends Node {
       final childRightSibling = getChildRightSibling(key);
       final left = childLeftSibling ?? child;
       final right = childLeftSibling != null ? child : childRightSibling;
+      final firstRightKey = right.firstLeafKey;
       left.merge(right);
-      deleteChild(right.hasKeys ? right.firstLeafKey : key);
+      deleteChild(firstRightKey);
       if (left.overflows) {
         final sibling = left.split();
         insertChild(sibling.firstLeafKey, sibling);
       }
       tree.chunky.free(right.index);
-      debugger(when: key == 9);
       if (!tree._root.hasKeys) {
         tree.chunky.free(tree._root.index);
         tree._root = left;
@@ -388,15 +386,11 @@ class LeafNode extends Node {
         ..children.add(sibling.index)
         ..numKeys = 1;
       tree._root = InternalNode(tree, newRootChunk);
-    } else {
-      print('LeafNode: Root ${tree._root} does not overflow.');
     }
   }
 
   void deleteValue(int key) {
     final result = _searchForKey(key);
-    print('Removing the value for key $key of ${chunk.keys}. Was found? '
-        '${result.wasFound}');
     if (result.wasFound) {
       chunk.removeKeyAndValueAt(result.index);
     }
