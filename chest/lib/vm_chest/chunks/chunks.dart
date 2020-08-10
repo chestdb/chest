@@ -3,6 +3,7 @@ export 'bucket_chunk.dart';
 export 'int_map.dart';
 export 'free_chunk.dart';
 export 'main_chunk.dart';
+export 'utils.dart';
 
 import 'dart:typed_data';
 
@@ -37,6 +38,10 @@ extension ChunkAbstractions on Chunk {
     };
     return abstractions[type](this) as T;
   }
+}
+
+abstract class StorageChunk extends ChunkWrapper {
+  StorageChunk(int type) : super(type);
 }
 
 extension TypedAddingOfChunks on Transaction {

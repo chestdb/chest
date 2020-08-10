@@ -18,7 +18,7 @@ import 'utils.dart';
 /// |      |     | id | offset | id | offset |               |        |        |
 /// | 1B   | 2B  | 8B | 2B     | 8B | 2B     | fill          | var    | var    |
 /// ```
-class BucketChunk extends ChunkWrapper {
+class BucketChunk extends StorageChunk {
   static const _headerEntryLength = docIdLength + offsetLength;
 
   BucketChunk(this.chunk) : super(ChunkTypes.bucket) {

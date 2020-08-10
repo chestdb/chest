@@ -1,11 +1,10 @@
 import 'dart:math';
 
-import 'package:chest/vm_chest/doc_tree.dart';
 import 'package:tape/tape.dart';
 
 import 'chunky/chunky.dart';
 import 'vm_chest/chunks/chunks.dart';
-import 'vm_chest/doc_tree.dart';
+import 'vm_chest/doc_storage.dart';
 import 'vm_chest/vm_chest.dart';
 
 void main() async {
@@ -13,32 +12,16 @@ void main() async {
       'Max children of internal node: ${IntMapInternalNodeChunk.maxChildren}');
   print('Max values of leaf node: ${IntMapLeafNodeChunk.maxValues}');
 
-  final chunky = Chunky('🌮');
-  try {
-    chunky.clear();
-    chunky.transaction((chunky) {
-      if (chunky.numberOfChunks == 0) {
-        // MainChunk(Chunk());
-        chunky.addTyped(ChunkTypes.main);
-      }
-    });
+  final chunky = Chunky('🌮')
+    ..clear()
+    ..transaction((chunky) => chunky.addTyped(ChunkTypes.main));
 
-    for (var i = 1; i <= 100; i++) {
-      chunky.transaction((chunky) {
-        print('> Adding $i');
-        IntMap(chunky).insert(i, 42 * i);
-      });
-      if (i % 10 == 0) {
-        chunky.transaction((chunky) {
-          print('> Removing $i');
-          IntMap(chunky).delete(i);
-        });
-      }
-    }
-    print('Done.');
-    throw 'Do not complete transaction.';
-  } catch (e) {
-    return;
+  for (var i = 1; i <= 100; i++) {
+    chunky.transaction((chunky) {
+      print('> Adding $i');
+      final docs = DocStorage(chunky);
+      docs[i] = List.generate(i, (n) => n);
+    });
   }
   return;
 
@@ -52,20 +35,6 @@ void main() async {
   // bucket.remove(1);
   // print(bucket.chunk);
 
-  // return;
-
-  // final tree = Tree<int>();
-  // for (var i = 1; i <= 7; i++) {
-  //   print('> Adding $i');
-  //   tree.insert(i, i);
-  //   print(tree);
-  //   if (i % 3 == 0) {
-  //     print('> Removing $i');
-  //     tree.delete(i);
-  //     print(tree);
-  //   }
-  // }
-  // print('Done.');
   // return;
 
   // Tape.registerDartCoreAdapters();

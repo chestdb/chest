@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:chest/chunky/chunky.dart';
@@ -62,7 +61,7 @@ abstract class ChunkWrapper {
 }
 
 extension SearchableListWithIntKeys<T> on List<T> {
-  SearchResult find(int key, [int Function(T) toKey]) {
+  SearchResult<T> find(int key, [int Function(T) toKey]) {
     assert(toKey != null || T == int);
     int min = 0;
     int max = length;

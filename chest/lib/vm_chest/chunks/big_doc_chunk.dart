@@ -1,54 +1,60 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:chest/chunky/chunky.dart';
 
+import 'chunks.dart';
 import 'utils.dart';
 
-/*
 /// A chunk that stores part of a document that is so large that it doesn't fit
 /// into a single chunk.
 ///
 /// The next chunk id points to either another [BigDocChunk] which is completely
-/// filled with data or to a [BigDocEndChunk], which is only partially filled
-/// with data and indicates the end of the document bytes.
+/// filled with data or to a [BigDocContinuationChunk], which is only partially
+/// filled with data and indicates the end of the document bytes.
 ///
 /// # Layout
 ///
 /// ```
-/// | 2  | next chunk id | data                                                |
-/// | 1B | 8B            | fill                                                |
+/// | type | doc id | length | next | data                                     |
+/// | 1B   | 8B     | 8B     | 8B   | fill                                     |
 /// ```
-// class BigDocPart {
-//   int nextChunkId;
-//   List<int> bytes;
-// }
-extension BigDocChunk on Chunk {
-  static const type = 2;
+class BigDocChunk extends StorageChunk {
+  static const headerLength = 1 + docIdLength + 8 + chunkIndexLength;
+  static const maxPayload = chunkSize - headerLength;
 
-  int getNextChunkId() => getInt64(1);
-  void setNextChunkId(int id) => setInt64(1, id);
+  BigDocChunk(this.chunk) : super(ChunkTypes.bigDoc);
 
-  Uint8List getDataView() => Uint8List.view(bytes.buffer, 9, chunkSize - 9);
-  void setData(Uint8List data) {
-    assert(data.length == chunkSize - 9);
-    writeCopy(data, 9);
-  }
+  final TransactionChunk chunk;
+
+  int get docId => chunk.getDocId(1);
+  set docId(int value) => chunk.setDocId(1, value);
+
+  int get length => chunk.getInt64(1 + docIdLength);
+  set length(int value) => chunk.setInt64(1 + docIdLength, value);
+
+  int get next => chunk.getDocId(1 + docIdLength + 8);
+  set next(int chunkIndex) => chunk.setDocId(1 + docIdLength + 8, chunkIndex);
+  bool get hasNext => next != 0;
 }
 
-/// A chunk that marks the end of a chain of [BigDocChunk]s.
+/// A chunk that continues the chain of data for big docs.
 ///
 /// # Layout
 ///
 /// ```
-/// | 3  | length | pad | data                  | padding                      |
-/// | 1B | 2B     | 6B  | var                   | fill                         |
+/// | type | next | data                                                       |
+/// | 1B   | 8B   | fill                                                       |
 /// ```
-extension BigDocEndChunk on Chunk {
-  static const type = 3;
+class BigDocContinuationChunk extends ChunkWrapper {
+  static const headerLength = 1 + chunkIndexLength;
+  static const maxPayload = chunkSize - headerLength;
 
-  int _getLength() => getUint16(1);
-  void _setLength(int id) => setUint16(1, id);
+  BigDocContinuationChunk(this.chunk) : super(ChunkTypes.bigDocEnd);
 
-  void getDataView() => Uint8List.view(buffer, 9, _getLength());
+  final TransactionChunk chunk;
+
+  int get next => chunk.getChunkIndex(1);
+  set next(int index) => chunk.setChunkIndex(1, index);
+  bool get hasNext => next != 0;
 }
-*/
