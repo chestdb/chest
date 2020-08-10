@@ -42,8 +42,9 @@ const _valueLength = 8;
 class IntMapInternalNodeChunk extends ChunkWrapper {
   static const _headerLength = 3;
   static const _entryLength = _keyLength + _childLength;
-  static const maxChildren =
-      (chunkSize - _headerLength - _childLength) ~/ _entryLength + 1;
+  static const maxKeys =
+      (chunkSize - _headerLength - _childLength) ~/ _entryLength - 1;
+  static const maxChildren = maxKeys + 1;
 
   IntMapInternalNodeChunk(this.chunk) : super(ChunkTypes.intMapInternalNode) {
     keys = BackedList<int>(
@@ -121,7 +122,8 @@ class IntMapInternalNodeChunk extends ChunkWrapper {
 class IntMapLeafNodeChunk extends ChunkWrapper {
   static const _headerLength = 11;
   static const _entryLength = _keyLength + _valueLength;
-  static const maxValues = (chunkSize - _headerLength) ~/ _entryLength;
+  static const maxKeys = (chunkSize - _headerLength) ~/ _entryLength - 1;
+  static const maxValues = maxKeys;
 
   IntMapLeafNodeChunk(this.chunk) : super(ChunkTypes.intMapLeafNode) {
     keys = BackedList<int>(
@@ -173,7 +175,7 @@ class IntMapLeafNodeChunk extends ChunkWrapper {
   }
 }
 
-const _branchingFactor = 3;
+// const _branchingFactor = 3;
 
 class IntMap {
   IntMap(this.chunky) {
@@ -234,8 +236,9 @@ class InternalNode extends Node {
   int get index => chunk.chunk.index;
   bool get hasKeys => chunk.numKeys > 0;
   int get firstLeafKey => tree.readNode(chunk.children.first).firstLeafKey;
-  bool get overflows => chunk.numChildren > _branchingFactor;
-  bool get underflows => chunk.numChildren < (_branchingFactor / 2).ceil();
+  bool get overflows => chunk.numChildren > IntMapInternalNodeChunk.maxChildren;
+  bool get underflows =>
+      chunk.numChildren < (IntMapInternalNodeChunk.maxChildren / 2).ceil();
 
   int getValue(int key) => getChild(key).getValue(key);
 
@@ -358,8 +361,8 @@ class LeafNode extends Node {
   int get index => chunk.chunk.index;
   bool get hasKeys => chunk.numEntries > 0;
   int get firstLeafKey => chunk.keys[0];
-  bool get overflows => chunk.numEntries > _branchingFactor - 1;
-  bool get underflows => chunk.numEntries < _branchingFactor ~/ 2;
+  bool get overflows => chunk.numEntries > IntMapLeafNodeChunk.maxKeys - 1;
+  bool get underflows => chunk.numEntries < IntMapLeafNodeChunk.maxKeys ~/ 2;
 
   // Returns the index of the child that can possibly contains the given key.
   // Doesn't guarantee that the child actually contains that key.

@@ -1,7 +1,8 @@
 part of 'chunky.dart';
 
 // const chunkSize = 4 * 1024; // 4 KiB
-const chunkSize = 64;
+// const chunkSize = 64;
+const chunkSize = 1024;
 
 abstract class Chunk {
   void setUint8(int offset, int value);
