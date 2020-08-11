@@ -1,8 +1,8 @@
 import 'package:chest/chunky/chunky.dart';
 
-import 'chunk_manager.dart';
-import 'chunks/int_map.dart';
-import 'chunks/chunks.dart';
+import 'chunks.dart';
+import '../chunks.dart';
+import '../chunk_manager/chunk_manager.dart';
 
 class IntMap {
   IntMap(this.chunky) {

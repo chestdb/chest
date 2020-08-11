@@ -1,12 +1,13 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:chest/chunky/chunky.dart';
 import 'package:meta/meta.dart';
 
-import '../chunky/chunky.dart';
-import 'chunk_manager.dart';
-import 'chunks/chunks.dart';
-import 'int_map.dart';
+import 'chunks.dart';
+import '../int_map/int_map.dart';
+import '../chunk_manager/chunk_manager.dart';
+import '../chunks.dart';
 
 class DocStorage {
   DocStorage(this.chunky);

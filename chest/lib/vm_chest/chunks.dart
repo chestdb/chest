@@ -1,19 +1,16 @@
-export 'big_doc_chunk.dart';
-export 'bucket_chunk.dart';
-export 'int_map.dart';
-export 'free_chunk.dart';
-export 'main_chunk.dart';
-export 'utils.dart';
-
-import 'dart:typed_data';
-
 import 'package:chest/chunky/chunky.dart';
 
-import 'bucket_chunk.dart';
-import 'int_map.dart';
-import 'free_chunk.dart';
+import 'chunk_manager/free_chunk.dart';
+import 'doc_storage/chunks.dart';
+import 'int_map/chunks.dart';
 import 'main_chunk.dart';
 import 'utils.dart';
+
+export 'chunk_manager/chunk_manager.dart';
+export 'doc_storage/doc_storage.dart';
+export 'int_map/int_map.dart';
+export 'main_chunk.dart';
+export 'utils.dart';
 
 class ChunkTypes {
   static const main = 0;
@@ -38,10 +35,6 @@ extension ChunkAbstractions on Chunk {
     };
     return abstractions[type](this) as T;
   }
-}
-
-abstract class StorageChunk extends ChunkWrapper {
-  StorageChunk(int type) : super(type);
 }
 
 extension TypedAddingOfChunks on Transaction {

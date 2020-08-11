@@ -1,11 +1,9 @@
 import 'dart:math';
 
-import 'package:tape/tape.dart';
-
 import 'chunky/chunky.dart';
-import 'vm_chest/chunks/chunks.dart';
-import 'vm_chest/doc_storage.dart';
-import 'vm_chest/vm_chest.dart';
+import 'vm_chest/chunks.dart';
+import 'vm_chest/doc_storage/doc_storage.dart';
+import 'vm_chest/int_map/chunks.dart';
 
 void main() async {
   print(

@@ -1,6 +1,8 @@
 import 'package:chest/chunky/chunky.dart';
 
-import 'chunks/chunks.dart';
+import '../chunks.dart';
+import '../utils.dart';
+import 'free_chunk.dart';
 
 extension ChunkManager on Transaction {
   TransactionChunk reserve() {

@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:convert/convert.dart';
 import 'package:meta/meta.dart';
 
-import 'package:chest/vm_chest/chunks/chunks.dart';
+import 'package:chest/vm_chest/chunks.dart';
 
 import 'files.dart';
 

@@ -1,7 +1,7 @@
 import 'package:chest/chunky/chunky.dart';
 
-import 'chunks.dart';
-import 'utils.dart';
+import '../chunks.dart';
+import '../utils.dart';
 
 /// A chunk that contains no functional data and is free to re-use.
 ///
