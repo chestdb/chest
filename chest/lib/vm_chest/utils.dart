@@ -57,6 +57,8 @@ abstract class ChunkWrapper {
 
   TransactionChunk get chunk;
 
+  int get index => chunk.index;
+
   String toString() => chunk.toString();
 }
 

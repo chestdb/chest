@@ -18,12 +18,15 @@ class MainChunk extends ChunkWrapper {
 
   int get firstFreeChunk => chunk.getChunkIndex(1);
   set firstFreeChunk(int id) => chunk.setChunkIndex(1, id);
+  bool get hasFreeChunk => firstFreeChunk != 0;
 
   int get docTreeRoot => chunk.getChunkIndex(9);
   set docTreeRoot(int id) {
     print('Root node set to $id');
     chunk.setChunkIndex(9, id);
   }
+
+  bool get hasDocTreeRoot => docTreeRoot != 0;
 
   String toString() =>
       'MainChunk(firstFreeChunk: $firstFreeChunk, docTreeRoot: $docTreeRoot)';

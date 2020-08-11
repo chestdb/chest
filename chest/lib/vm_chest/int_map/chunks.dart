@@ -45,16 +45,19 @@ class IntMapInternalNodeChunk extends ChunkWrapper {
 
   IntMapInternalNodeChunk(this.chunk) : super(ChunkTypes.intMapInternalNode) {
     keys = BackedList<int>(
-      setLength: (length) => numKeys = length,
-      getLength: () => numKeys,
+      setLength: (length) => _numKeys = length,
+      getLength: () => _numKeys,
       setItem: (index, key) => chunk.setKey(
           _headerLength + _childLength + _entryLength * index, key),
       getItem: (index) =>
           chunk.getKey(_headerLength + _childLength + _entryLength * index),
     );
+    // If this chunk is newly initialized, we don't have any keys or children
+    // yet. In all other cases, we have one child more than keys.
+    _numChildren = keys.length == 0 ? 0 : keys.length + 1;
     children = BackedList<int>(
-      setLength: (length) => numKeys = length - 1,
-      getLength: () => numChildren,
+      setLength: (length) => _numChildren = length,
+      getLength: () => _numChildren,
       setItem: (index, child) =>
           chunk.setChild(_headerLength + _entryLength * index, child),
       getItem: (index) => chunk.getChild(_headerLength + _entryLength * index),
@@ -65,40 +68,25 @@ class IntMapInternalNodeChunk extends ChunkWrapper {
   BackedList<int> keys;
   BackedList<int> children;
 
-  int get numKeys => chunk.getUint16(1);
-  set numKeys(int numKeys) => chunk.setUint16(1, numKeys);
-  int get numChildren => numKeys + 1;
+  int get _numKeys => chunk.getUint16(1);
+  set _numKeys(int numKeys) => chunk.setUint16(1, numKeys);
 
-  void initialize({
-    @required List<int> keys,
-    @required List<int> children,
-  }) {
-    assert(keys.length + 1 == children.length);
-    numKeys = 0;
-    this.children.first = children.first;
-    this.children.addAll(children.sublist(1));
-    numKeys = 0;
-    this.keys.addAll(keys);
-  }
-
-  void insertKeyAndChild(int index, int key, int child) {
-    keys.insert(index, key);
-    numKeys--;
-    children.insert(index + 1, child);
-  }
-
-  void removeKeyAndChildAt(int keyIndex, int childIndex) {
-    keys.removeAt(keyIndex);
-    numKeys++;
-    children.removeAt(childIndex);
-  }
+  /// Because the [children] list is always one element longer than the [keys]
+  /// list, the length is only encoded once in the binary format.
+  /// The [ListMixin] asserts that the length changes appropriately when doing
+  /// operations on the lists – of course, that doesn't work if both lists share
+  /// the same length variable. That's why we stores the [children]'s length
+  /// separately in-memory.
+  /// Because this variable isn't ever serialized, the number of keys is the
+  /// ultimate source of truth.
+  int _numChildren;
 
   String toString() {
     final buffer = StringBuffer()..write('[');
-    for (var i = 0; i < numKeys; i++) {
+    for (var i = 0; i < _numKeys; i++) {
       buffer.write('child ${children[i]}, ${keys[i]}, ');
     }
-    if (numChildren > 0) {
+    if (_numChildren > 0) {
       buffer.write('child ${children.last}');
     }
     buffer.write(']');
@@ -124,15 +112,16 @@ class IntMapLeafNodeChunk extends ChunkWrapper {
 
   IntMapLeafNodeChunk(this.chunk) : super(ChunkTypes.intMapLeafNode) {
     keys = BackedList<int>(
-      setLength: (length) => numEntries = length,
-      getLength: () => numEntries,
+      setLength: (length) => _numKeys = length,
+      getLength: () => _numKeys,
       setItem: (index, key) =>
           chunk.setKey(_headerLength + _entryLength * index, key),
       getItem: (index) => chunk.getKey(_headerLength + _entryLength * index),
     );
+    _numValues = keys.length;
     values = BackedList<int>(
-      setLength: (length) => numEntries = length,
-      getLength: () => numEntries,
+      setLength: (length) => _numValues = length,
+      getLength: () => _numValues,
       setItem: (index, value) => chunk.setValue(
           _headerLength + _entryLength * index + _keyLength, value),
       getItem: (index) =>
@@ -144,28 +133,20 @@ class IntMapLeafNodeChunk extends ChunkWrapper {
   BackedList<int> keys;
   BackedList<int> values;
 
-  int get numEntries => chunk.getUint16(1);
-  set numEntries(int value) => chunk.setUint16(1, value);
+  int get _numKeys => chunk.getUint16(1);
+  set _numKeys(int value) => chunk.setUint16(1, value);
+
+  /// Similar to [IntMapInternalNodeChunk]'s `_numKeys` field, we also have an
+  /// in-memory copy of the value length here.
+  int _numValues;
 
   int get nextLeaf => chunk.getChunkIndex(3);
   set nextLeaf(int id) => chunk.setChunkIndex(3, id);
 
-  void insertKeyAndValue(int index, int key, int value) {
-    keys.insert(index, key);
-    numEntries--;
-    values.insert(index, value);
-  }
-
-  void removeKeyAndValueAt(int index) {
-    keys.removeAt(index);
-    numEntries++;
-    values.removeAt(index);
-  }
-
   String toString() {
     final buffer = StringBuffer()..write('{');
     buffer.write([
-      for (var i = 0; i < numEntries; i++) '${keys[i]}: ${values[i]}',
+      for (var i = 0; i < _numKeys; i++) '${keys[i]}: ${values[i]}',
     ].join(', '));
     buffer.write('}');
     return buffer.toString();
