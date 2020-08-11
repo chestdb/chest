@@ -15,17 +15,17 @@ class DocStorage {
   final Transaction chunky;
 
   Uint8List operator [](int docId) {
-    return chunky.getDoc(IntMap(chunky).find(docId), docId);
+    return chunky.getDoc(IntMap(chunky)[docId], docId);
   }
 
   bool remove(int docId) {
-    final chunkIndex = IntMap(chunky).find(docId);
-    final wasFound = chunkIndex != null;
-    if (wasFound) {
-      chunky.freeStorage(chunkIndex);
+    final removedChunkIndex = IntMap(chunky).remove(docId);
+    if (removedChunkIndex != null) {
+      // TODO: Free chunk only if it's empty. And if it's a big doc, also remove more chunks.
+      chunky.freeStorage(removedChunkIndex);
+      return true;
     }
-    IntMap(chunky).remove(docId);
-    return wasFound;
+    return false;
   }
 
   operator []=(int docId, List<int> bytes) {
@@ -40,7 +40,7 @@ class DocStorage {
     } else {
       chunky.save(chunk.index, bytes);
     }
-    IntMap(chunky).insert(docId, chunk.index);
+    IntMap(chunky)[docId] = chunk.index;
   }
 }
 

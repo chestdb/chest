@@ -19,8 +19,8 @@ class IntMap {
   Node get _root => readNode(chunky.mainChunk.docTreeRoot);
   set _root(Node newRoot) => chunky.mainChunk.docTreeRoot = newRoot.index;
 
-  int find(int key) => _root.getValue(key);
-  void insert(int key, int value) {
+  int operator [](int key) => _root.getValue(key);
+  operator []=(int key, int value) {
     _root.insertValue(key, value);
     if (_root.overflows) {
       final sibling = _root.split();
@@ -31,7 +31,7 @@ class IntMap {
     }
   }
 
-  void remove(int key) => _root.removeValue(key);
+  int remove(int key) => _root.removeValue(key);
   String toString() => _root.toString();
 }
 
@@ -57,7 +57,7 @@ abstract class Node {
 
   int getValue(int key);
   void insertValue(int key, int value);
-  void removeValue(int key);
+  int removeValue(int key);
 
   void merge(Node sibling);
   Node split();
@@ -88,9 +88,9 @@ class InternalNode extends Node {
     }
   }
 
-  void removeValue(int key) {
+  int removeValue(int key) {
     final child = getChild(key);
-    child.removeValue(key);
+    final removedValue = child.removeValue(key);
     if (child.underflows) {
       final childLeftSibling = getChildLeftSibling(key);
       final childRightSibling = getChildRightSibling(key);
@@ -109,6 +109,7 @@ class InternalNode extends Node {
         tree._root = left;
       }
     }
+    return removedValue;
   }
 
   void merge(Node sibling) {
@@ -208,11 +209,13 @@ class LeafNode extends Node {
     }
   }
 
-  void removeValue(int key) {
+  int removeValue(int key) {
     final result = _searchForKey(key);
     if (result.wasFound) {
-      _chunk..keys.removeAt(result.index)..values.removeAt(result.index);
+      _chunk.keys.removeAt(result.index);
+      return _chunk.values.removeAt(result.index);
     }
+    return null;
   }
 
   void merge(Node sibling) {
