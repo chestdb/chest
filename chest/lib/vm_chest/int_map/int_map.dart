@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:chest/chunky/chunky.dart';
 
 import 'chunks.dart';
@@ -19,8 +21,15 @@ class IntMap {
   Node get _root => readNode(chunky.mainChunk.docTreeRoot);
   set _root(Node newRoot) => chunky.mainChunk.docTreeRoot = newRoot.index;
 
-  int operator [](int key) => _root.getValue(key);
+  int operator [](int key) {
+    assert(key != null);
+    _root.getValue(key);
+  }
+
   operator []=(int key, int value) {
+    assert(key != null);
+    assert(value != null);
+
     _root.insertValue(key, value);
     if (_root.overflows) {
       final sibling = _root.split();
@@ -31,6 +40,7 @@ class IntMap {
     }
   }
 
+  int random([Random random]) => _root.getRandomValue(random);
   int remove(int key) => _root.removeValue(key);
   String toString() => _root.toString();
 }
@@ -56,6 +66,7 @@ abstract class Node {
   bool get underflows;
 
   int getValue(int key);
+  int getRandomValue(Random random);
   void insertValue(int key, int value);
   int removeValue(int key);
 
@@ -78,6 +89,9 @@ class InternalNode extends Node {
       _chunk.children.length < (IntMapInternalNodeChunk.maxChildren / 2).ceil();
 
   int getValue(int key) => getChild(key).getValue(key);
+
+  int getRandomValue(Random random) =>
+      tree.readNode(_chunk.children.random(random)).getRandomValue(random);
 
   void insertValue(int key, int value) {
     final child = getChild(key);
@@ -197,6 +211,8 @@ class LeafNode extends Node {
     final result = _searchForKey(key);
     return result.wasFound ? _chunk.values[result.index] : null;
   }
+
+  int getRandomValue(Random random) => _chunk.values.random(random);
 
   void insertValue(int key, int value) {
     final result = _searchForKey(key);

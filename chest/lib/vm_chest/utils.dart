@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:chest/chunky/chunky.dart';
@@ -60,6 +61,11 @@ abstract class ChunkWrapper {
   int get index => chunk.index;
 
   String toString() => chunk.toString();
+}
+
+extension RandomElement<T> on List<T> {
+  T random([Random random]) =>
+      isEmpty ? null : this[(random ?? Random()).nextInt(length)];
 }
 
 extension SearchableListWithIntKeys<T> on List<T> {

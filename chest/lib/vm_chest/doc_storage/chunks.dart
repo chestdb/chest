@@ -23,6 +23,7 @@ abstract class StorageChunk extends ChunkWrapper {
 /// ```
 class BucketChunk extends StorageChunk {
   static const _headerEntryLength = docIdLength + offsetLength;
+  static const maxPayload = chunkSize - 1 - 2 - _headerEntryLength;
 
   BucketChunk(this.chunk) : super(ChunkTypes.bucket) {
     _headers = BackedList(
@@ -119,11 +120,19 @@ extension on List<_Header> {
       insertSorted(header, (header) => header.docId);
 }
 
+abstract class BigDocStorageChunk extends StorageChunk {
+  BigDocStorageChunk(int type) : super(type);
+
+  int get next;
+  set next(int chunkId);
+  bool get hasNext => next != 0;
+}
+
 /// A chunk that stores part of a document that is so large that it doesn't fit
 /// into a single chunk.
 ///
 /// The next chunk id points to either another [BigDocChunk] which is completely
-/// filled with data or to a [BigDocContinuationChunk], which is only partially
+/// filled with data or to a [BigDocNextChunk], which is only partially
 /// filled with data and indicates the end of the document bytes.
 ///
 /// # Layout
@@ -132,7 +141,7 @@ extension on List<_Header> {
 /// | type | doc id | length | next | data                                     |
 /// | 1B   | 8B     | 8B     | 8B   | fill                                     |
 /// ```
-class BigDocChunk extends StorageChunk {
+class BigDocChunk extends BigDocStorageChunk {
   static const headerLength = 1 + docIdLength + 8 + chunkIndexLength;
   static const maxPayload = chunkSize - headerLength;
 
@@ -148,7 +157,6 @@ class BigDocChunk extends StorageChunk {
 
   int get next => chunk.getDocId(1 + docIdLength + 8);
   set next(int chunkIndex) => chunk.setDocId(1 + docIdLength + 8, chunkIndex);
-  bool get hasNext => next != 0;
 }
 
 /// A chunk that continues the chain of data for big docs.
@@ -159,15 +167,14 @@ class BigDocChunk extends StorageChunk {
 /// | type | next | data                                                       |
 /// | 1B   | 8B   | fill                                                       |
 /// ```
-class BigDocContinuationChunk extends ChunkWrapper {
+class BigDocNextChunk extends BigDocStorageChunk {
   static const headerLength = 1 + chunkIndexLength;
   static const maxPayload = chunkSize - headerLength;
 
-  BigDocContinuationChunk(this.chunk) : super(ChunkTypes.bigDocEnd);
+  BigDocNextChunk(this.chunk) : super(ChunkTypes.bigDocEnd);
 
   final TransactionChunk chunk;
 
   int get next => chunk.getChunkIndex(1);
   set next(int index) => chunk.setChunkIndex(1, index);
-  bool get hasNext => next != 0;
 }

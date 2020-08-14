@@ -15,12 +15,30 @@ void main() async {
     ..transaction((chunky) => chunky.addTyped(ChunkTypes.main));
 
   for (var i = 1; i <= 100; i++) {
+    // chunky.transaction((chunky) {
+    //   print('> Adding $i');
+    //   final intMap = IntMap(chunky);
+    //   intMap[i] = i;
+    // });
     chunky.transaction((chunky) {
       print('> Adding $i');
       final docs = DocStorage(chunky);
       docs[i] = List.generate(i, (n) => n);
     });
   }
+
+  chunky.transaction((chunky) {
+    var countByIds = <int, int>{};
+    for (var i = 0; i < chunky.numberOfChunks; i++) {
+      final type = chunky[i].type;
+      final count = countByIds.putIfAbsent(type, () => 0);
+      countByIds[type] = count + 1;
+    }
+    print('Summary:');
+    countByIds.forEach((type, count) {
+      print('${count}x $type');
+    });
+  });
   return;
 
   // final chunk = Chunk();
