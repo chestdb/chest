@@ -166,12 +166,14 @@ or
 | banana   | banana s | kiwi     |          |
 | v        | p        | v        |          |
 +----------+----------+----------+----------+
-                ↓
+             ↓
 +---------------+---------------+---------------+
 | hake          |               |               |
 | v             |               |               |
 +---------------+---------------+---------------+
 ```
+
+Note that in the second option, because `banana shake` doesn't fit into the first node, a child needs to be created containing the rest.
 
 The first option uses 3/3 slots, the lower one 4/7. So, the first option is chosen:
 
