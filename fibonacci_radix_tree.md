@@ -293,6 +293,10 @@ It doesn't contain the next 8 bytes, `a smooth`, so we add those as a key. Our k
 +----------+----------+----------+----------+
 ```
 
+## Deletion
+
+TODO: Think about this.
+
 ## Edge cases
 
 ### Lower bound
