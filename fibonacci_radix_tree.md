@@ -67,7 +67,7 @@ We only need one chunk instead of two!
 
 ## Fibonacci radix tree
 
-So, how can implement something like that on scale?
+So, how can we implement something like that on scale?
 That's where the Fibonacci radix tree comes into play.
 Each node has a maximum key part length that is a Fibonacci number. A node with a maximum key part length of n is called n-node.
 
