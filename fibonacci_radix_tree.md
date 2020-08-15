@@ -104,7 +104,7 @@ Let's have a look at how a Fibonacci Radix Tree with the node types from above e
 - `fruits`
 - `banana smoothie with a little umbrella`
 
-From here on, the length of the nodes is assumed to be proportional to the amount of space they're using.
+From here on, the width of nodes in diagrams is proportional to the amount of space they're using.
 
 ### Adding `banana`
 
