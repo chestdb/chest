@@ -290,7 +290,7 @@ It doesn't contain the next 8 bytes, `a smooth`, so we add those as a key. Our k
 +------------------------------------+         |
                                                |
 +----------+----------+----------+----------+  |
-| bowl     | s        |          |          |←-+
+|  bowl    | s        |          |          |←-+
 | v        | v        |          |          |
 +----------+----------+----------+----------+
 ```
@@ -303,11 +303,11 @@ TODO: Think about this.
 
 ### Lower bound
 
-The smallest node can't be split anymore, so all possible combinations have to fit inside it. That means, if the smallest node saves 1 byte of a key, then it needs to have at least 256 slots.
+The smallest node can't be split anymore, so all possible combinations have to fit inside it. That means, if the smallest node saves 1 byte per key, then it needs to have at least 256 slots.
 
-This could be circumvented by splitting the node even further – like make it contain 5 *bits* per key. But good luck implementing that. 😉
-Better options are:
+There are a couple of options for circumventing that:
 
+- Split the node even further – like, make it contain 5 *bits* per key. But good luck implementing that. 😉
 - Simply increase the node size / chunk size.
 - Represent one leaf node with multiple chunks in a linked-list-style.
 
@@ -315,4 +315,4 @@ Better options are:
 
 The biggest node doesn't necessarily fill the whole chunk, only the space equal to the largest Fibonacci number lower than the limit. That's a waste of space if there are few long keys that cause the tree to degenerate into a linked list.
 
-So, it may make sense to have a special upper bound chunk that fills the chunk and can be split into two of the previous Fibonacci-sized upper chunks.
+So, it may make sense to have a special upper bound chunk that fills the chunk and can be split into two of the biggest Fibonacci-sized chunks.
