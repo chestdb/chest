@@ -1,7 +1,9 @@
-# Fibonacci radix tree
+# Fibonacci Radix Tree
 
 A useful invariant of keys and index values is that they can be compared byte-by-byte.
 So, for Chest, I invented a new datastructure, the Fibonacci radix tree.
+
+## Radix trees
 
 In radix trees, only parts of the keys are stored in each node.
 Consider the following radix tree which saves the keys `fruit bowl`, `fruit`, `fruit shake`, and `banana`:
@@ -33,7 +35,10 @@ p = pointer, v = value
 +------+---+-------+
 ```
 
-A challenge when implementing a radix tree in a storage-based environment is that the nodes all have the same size (in Chest, each node is a chunk). So, it's often more more memory-efficient to allow some duplication.
+## Can duplication be good?
+
+A challenge when implementing a radix tree in a storage-based environment is that the nodes all have the same size (in Chest, each node is a chunk). So, the less nodes you use, the more memory-efficient the tree is.
+That's why it might make sense to allow some duplication.
 
 Imagine the keys `ab` and `ac` are stored:
 
@@ -60,10 +65,13 @@ This is how that would look with duplication allowed:
 
 We only need one chunk instead of two!
 
-So, how can implement something like that on scale?
-That's where the Fibonacci radix tree comes into play. The key parts stored in each node have a (maximum) length of a Fibonacci number that is defined for that node.
+## Fibonacci radix tree
 
-Given a memory limit, possible nodes setups are defined where the key parts have a Fibonacii length:
+So, how can implement something like that on scale?
+That's where the Fibonacci radix tree comes into play.
+Each node has a maximum key part length that is a Fibonacci number. A node with a maximum key part length of n is called n-node.
+
+Here's a diagram for a specific node size memory limit showing that nodes with smaller key parts can contain more children than nodes with larger key parts:
 
 ```
  1 | a | a | a | a | a | a | a | a | a | a | a | a | hard
@@ -73,67 +81,214 @@ Given a memory limit, possible nodes setups are defined where the key parts have
  8 | aaaaaaaa | aaaaaaaa | aaaaaaaa | aaaaaaaa |   |
 13 | aaaaaaaaaaaaa | aaaaaaaaaaaaa | aaaaaaaaaaaaa |
 21 | aaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaa |
+34 | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |          |
 ```
 
-Suppose the following keys are added:
+If a node overflows, it's split into a hierarchy of the two smaller node types.
+
+Consider a 5-node (containing 5-byte parts of keys) that needs to be split. The following two options are possible:
+
+- Split it into a 3-node and a layer of 2-nodes.
+- Split it into a 2-node and a layer of 3-nodes.
+
+For both these options, the filling factor is computed (what percentage of the available slots is used) and the option with the larger filling factor is chosen.
+
+## Example
+
+Let's have a look at how a Fibonacci Radix Tree with the node types from above evolves when the following keys are added:
 
 - `banana`
 - `banana shake`
 - `kiwi`
 - `fruit bowl`
-- `shake made out of banana`
-- `fruit bowl with kiwis and some other stuff`
+- `fruits`
+- `banana smoothie with a little umbrella`
 
-By default, the largest setup is used. Adding `banana`:
+From here on, the length of the nodes is assumed to be proportional to the amount of space they're using.
+
+### Adding `banana`
+
+By default, the node with the largest key parts (in this case, a 43-node) is used:
 
 ```
-   +-----------------------+-----------------------+
-21 | banana                | -                     |
-   | v                     |                       |
-   +-----------------------+-----------------------+
++------------------------------------+
+| banana                             |
+| v                                  |
++------------------------------------+
 ```
 
-If there's still space, new keys are just added. Adding `banana shake`:
-```
-   +-----------------------+-----------------------+
-21 | banana                | banana shake          |
-   | v                     | v                     |
-   +-----------------------+-----------------------+
-```
+### Adding `banana shake`
 
-Adding `kiwi` doesn't work because there's no space anymore. So, the 21-node is split into a 8- and a 13-node.
+There's no empty slot, so the node needs to be split. The two options are:
 
-There are two options: Making the upper or the lower node the larger one. Both of them are considered:
+- Split the node into a 21-node with 13-nodes as children if necessary.
+- Split the node into a 13-node with 21-nodes as children if necessary.
+
+In both cases, the key parts fit into the limit, so no children are necessary either way:
+
 ```
-   +---------------+---------------+---------------+
-13 | banana        | banana shake  | kiwi          |
-   | v             | v             | v             |
-   +---------------+---------------+---------------+
- 8 not needed
++-----------------------+-----------------------+
+| banana                | banana shake          |
+| v                     | v                     |
++-----------------------+-----------------------+
 
 or
 
-   +----------+----------+----------+----------+
- 8 | banana   | banana s | kiwi     |          |
-   | v        | p        | v        |          |
-   +----------+----------+----------+----------+
++---------------+---------------+---------------+
+| banana        | banana shake  |               |
+| v             | v             |               |
++---------------+---------------+---------------+
+```
+
+The options use 2/2, or 2/3 slots, respectively. So, the filling factors are 2/2=1.0 and 2/3=0.67.
+The first option's filling factor is greater, so it is chosen:
+
+```
++-----------------------+-----------------------+
+| banana                | banana shake          |
+| v                     | v                     |
++-----------------------+-----------------------+
+```
+
+### Adding `kiwi`
+
+Now, the 21-node needs to be split. These are the two options:
+
+```
++---------------+---------------+---------------+
+| banana        | banana shake  | kiwi          |
+| v             | v             | v             |
++---------------+---------------+---------------+
+
+or
+
++----------+----------+----------+----------+
+| banana   | banana s | kiwi     |          |
+| v        | p        | v        |          |
++----------+----------+----------+----------+
                 ↓
-   +---------------+---------------+---------------+
-13 | hake          |               |               |
-   | v             |               |               |
-   +---------------+---------------+---------------+
++---------------+---------------+---------------+
+| hake          |               |               |
+| v             |               |               |
++---------------+---------------+---------------+
 ```
 
-Not requiring a second node is of course better, so the first option is chosen.
-
-Next, `fruit bowl` is added. Because the node is already full it's again split into two. The current size is 13, so it's split into a 8-node and a 5-node. Again, both orderings are considered:
+The first option uses 3/3 slots, the lower one 4/7. So, the first option is chosen:
 
 ```
-   +----------+----------+----------+----------+
- 8 | banana   | banana s | kiwi     | fruit bo |
-   | v        | p        | v        |          |
-   +----------+----------+----------+----------+
-
-
++---------------+---------------+---------------+
+| banana        | banana shake  | kiwi          |
+| v             | v             | v             |
++---------------+---------------+---------------+
 ```
 
+### Adding `fruit bowl`
+
+Next, `fruit bowl` is added. Because the current node is already full, it has to be split again.
+It's currently a 13-node, so 8-node and 5-node are the two options for the root node type:
+
+```
++----------+----------+----------+----------+
+| banana   | banana s | kiwi     | fruit bo |
+| v        | p        | v        | p        |
++----------+----------+----------+----------+
+             |                     +---------------+
+             ↓                                     |
++-------+-------+-------+-------+-------+-------+  |
+| hake  |       |       |       |       |       |  |
+| v     |       |       |       |       |       |  |
++-------+-------+-------+-------+-------+-------+  |
+                                                   |
++-------+-------+-------+-------+-------+-------+  |
+| wl    |       |       |       |       |       |←-+
+| v     |       |       |       |       |       |
++-------+-------+-------+-------+-------+-------+
+
+or
+
++-------+-------+-------+-------+-------+-------+
+| banan | kiwi  | fruit |       |       |       |
+| p     | v     | p     |       |       |       |
++-------+-------+-------+-------+-------+-------+
+  |               +----------------------------+
+  ↓                                            |
++----------+----------+----------+----------+  |
+| a        | a shake  |          |          |  |
+| v        | v        |          |          |  |
++----------+----------+----------+----------+  |
+                                               |
++----------+----------+----------+----------+  |
+|  bowl    |          |          |          |←-+
+| v        |          |          |          |
++----------+----------+----------+----------+
+```
+
+The filling factors are 6/16=0.38 and 6/14=0.43, so the second option is chosen:
+
+```
++-------+-------+-------+-------+-------+-------+
+| banan | kiwi  | fruit |       |       |       |
+| p     | v     | p     |       |       |       |
++-------+-------+-------+-------+-------+-------+
+  |               +----------------------------+
+  ↓                                            |
++----------+----------+----------+----------+  |
+| a        | a shake  |          |          |  |
+| v        | v        |          |          |  |
++----------+----------+----------+----------+  |
+                                               |
++----------+----------+----------+----------+  |
+|  bowl    |          |          |          |←-+
+| v        |          |          |          |
++----------+----------+----------+----------+
+```
+
+### Adding `fruits`
+
+The root node is a 5-node and the first 5 bytes of `fruits` (`fruit`) already exist as a key. So, we follow the pointer and insert the key into the next chunk:
+
+```
++-------+-------+-------+-------+-------+-------+
+| banan | kiwi  | fruit |       |       |       |
+| p     | v     | p     |       |       |       |
++-------+-------+-------+-------+-------+-------+
+  |               +----------------------------+
+  ↓                                            |
++----------+----------+----------+----------+  |
+| a        | a shake  |          |          |  |
+| v        | v        |          |          |  |
++----------+----------+----------+----------+  |
+                                               |
++----------+----------+----------+----------+  |
+|  bowl    | s        |          |          |←-+
+| v        | v        |          |          |
++----------+----------+----------+----------+
+```
+
+### Adding `banana smoothie with a little umbrella`
+
+`banana smoothie with a little umbrella` starts with `banan`, so we follow the pointer to the second node, which is an 8-node.
+It doesn't contain the next 8 bytes, `a smooth`, so we add those as a key. Our key is still longer, so we add a new node for the rest, defaulting to the 43-node (just like in the beginning):
+
+```
++-------+-------+-------+-------+-------+-------+
+| banan | kiwi  | fruit |       |       |       |
+| p     | v     | p     |       |       |       |
++-------+-------+-------+-------+-------+-------+
+  |               +----------------------------+
+  ↓                                            |
++----------+----------+----------+----------+  |
+| a        | a shake  | a smooth |          |  |
+| v        | v        | p        |          |  |
++----------+----------+----------+----------+  |
+                        ↓                      |
++------------------------------------+         |
+| ie with a little umbrella          |         |
+| v                                  |         |
++------------------------------------+         |
+                                               |
++----------+----------+----------+----------+  |
+| bowl     | s        |          |          |←-+
+| v        | v        |          |          |
++----------+----------+----------+----------+
+```
