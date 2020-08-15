@@ -292,3 +292,21 @@ It doesn't contain the next 8 bytes, `a smooth`, so we add those as a key. Our k
 | v        | v        |          |          |
 +----------+----------+----------+----------+
 ```
+
+## Edge cases
+
+### Lower bound
+
+The smallest node can't be split anymore, so all possible combinations have to fit inside it. That means, if the smallest node saves 1 byte of a key, then it needs to have at least 256 slots.
+
+While you could split the node even further – like make it contain 5 *bits* per key – this could be circumvented, but have fun implementing that. 😉
+Better options are:
+
+- Increase the node size / chunk size.
+- Let one leaf node be represented by multiple chunks in a linked list style.
+
+### Upper bound
+
+The biggest node doesn't necessarily fill the whole chunk. That's a waste of space if there are some very unique keys causing the tree to degenerate into a linked list.
+
+So, it may make sense to have a special upper bound chunk that fills the chunk and can be split into two of the previous Fibonacci-sized upper chunks.
