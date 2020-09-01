@@ -1,4 +1,4 @@
-/*import 'dart:convert';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:isolate';
 
@@ -6,8 +6,25 @@ import 'package:chest/chunky/chunky.dart';
 import 'package:tape/tape.dart';
 
 import '../chest.dart';
-import 'chunks/chunks.dart';
+import 'chunks.dart';
 
+/// An implementation of [Chest] for the Dart VM.
+///
+/// Asynchronous I/O is slow in Dart and we want to be able to communicate with
+/// our debugging tooling without huge performance impacts. That's why the
+/// [VmChest] spawns another [Isolate] ("the backend") where only synchronous
+/// I/O is used. All the heavy lifting is done by the backend and the [VmChest]
+/// is merely a thin client that communicates with it by sending messages
+/// through ports.
+///
+/// # Communication
+///
+/// The first message from the backend is a [SendPort] to enable bidirectional
+/// communication. All the other messages exchanged are valid json strings and
+/// have a `type` field.
+///
+/// {'type': 'setup', 'name': '<name of the chest>'}
+/// {'type': 'put', 'key': '<base64-encoded key>', 'value': '<base64-encoded value>'}
 class VmChest implements Chest {
   VmChest(this.name) {
     _spawnBackend();
@@ -40,13 +57,69 @@ class VmChest implements Chest {
   }
 
   @override
-  Future<void> put(List<int> key, Object value) async {
-    // TODO: wait for [_sendPort] to be initialized.
-    _sendPort.send(json.encode({
-      'type': 'put',
-      'key': base64.encode(key),
-      'value': base64.encode(tape.encode(value)),
-    }));
+  Box<K, V> box<K, V>(String name) => VmBox._(this, null, name);
+}
+
+class VmBox<K, V> implements Box<K, V> {
+  VmBox._(this._chest, this._doc, this._name);
+
+  final VmChest _chest;
+  final VmDoc _doc; // The parent doc. Is `null` if this is a root box.
+  final String _name;
+
+  List<dynamic> get _path => _doc == null ? [_name] : [..._doc._path, _name];
+
+  @override
+  Doc<V> doc(K key) => VmDoc._(_chest, this, key);
+
+  @override
+  QueryResult<V> rawQuery(Query<IndexedClass<V>> query) {
+    print('TODO: Execute the query $query');
+    throw UnimplementedError();
+  }
+}
+
+class VmDoc<K, V> implements Doc<V> {
+  VmDoc._(this._chest, this._box, this._key);
+
+  final VmChest _chest;
+  final VmBox _box;
+  final K _key;
+
+  List<dynamic> get _path => [..._box._path, _key];
+  List<dynamic> get path => _path; // TODO: Remove.
+
+  @override
+  Box<K, W> box<K, W>(String name) => VmBox._(_chest, this, name);
+
+  @override
+  Future<bool> exists() {
+    // TODO: implement exists
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<V> get() {
+    // TODO: implement get
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> remove() {
+    // TODO: implement remove
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> set(V value) {
+    // TODO: implement set
+    throw UnimplementedError();
+  }
+
+  @override
+  Stream<V> watch() {
+    // TODO: implement watch
+    throw UnimplementedError();
   }
 }
 
@@ -73,7 +146,7 @@ class _ChestVmBackend {
       final data = json.decode(message) as Map<String, dynamic>;
       print('Message is $message');
       final handler = {
-        'setup': initialize,
+        'setup': setup,
         'put': put,
       }[data['type']];
       if (handler == null) {
@@ -86,17 +159,15 @@ class _ChestVmBackend {
     _registerServiceMethods();
   }
 
-  void initialize(Map<String, dynamic> message) {
+  void setup(Map<String, dynamic> message) {
     _name = message['name'];
-    _chunky = Chunky.named('$_name.chest');
+    _chunky = Chunky('$_name.chest');
 
     if (_chunky.numberOfChunks == 0) {
       _chunky.transaction((chunky) {
-        // MainChunk(_chunk).apply();
-        chunky.write(0, _chunk);
-
-        // DocTreeChunk(_chunk).apply();
-        chunky.write(1, _chunk);
+        if (chunky.numberOfChunks == 0) {
+          chunky.addTyped(ChunkTypes.main);
+        }
       });
     }
   }
@@ -118,4 +189,4 @@ class _ChestVmBackend {
       }));
     });
   }
-}*/
+}

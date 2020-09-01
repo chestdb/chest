@@ -1,3 +1,5 @@
+import 'vm_chest/vm_chest.dart';
+
 part 'query.dart';
 
 /// A representation of a single database.
