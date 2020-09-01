@@ -51,13 +51,14 @@ await users.remove('foo');
 ### Queries
 
 Queries are like `.where` but more limited.
-Why's that? Because they're really efficient (they work in logarithmic time).
+Why's that? Because they're really efficient (they tend to scale with the size of the result set).
 
 ```dart
 final someUsers = users.query((user) {
   return user.firstName.equals('Marcel')
     & user.lastName.startsWith('G')
-    | user.age.isBetween(12, 25);
+    | user.age.isBetween(12, 25)
+    | user.age > 20;
 }).sortedBy((user) => user.age).limitTo(10);
 ```
 
@@ -124,10 +125,92 @@ These are some chunk types:
 - `CollectionTreeChunk` is a node in a key tree.
 - `IndexTreeChunk` is a node in an index tree.
 
+## Chest layout
+
+- once: MainChunk
+  - points to first free chunk
+  - maps doc id -> doc
+  - has list of child boxes
+  - has statistics
+- each box: BoxChunk
+  - maps key id -> key
+  - maps key -> doc id
+- each doc:
+  - key id
+  - points to parent box
+  - payload
+  - has child of child boxes
+
+two users with two posts, each two comments
+
+MainChunk: stats
+BoxListChunk: posts and users
+BoxChunk: posts
+Map: post key -> post id
+Map: post id -> chunk index
+2x BoxChunk: comments
+   Map: comment key -> comment id 
+   Map: comment id -> chunk index
+BoxChunk: users
+Map: user key -> user id
+Map: user id -> chunk index
+BucketChunk: posts, keys, users, comments
+
+4 boxes, 8 docs, 15 chunks
+
 ## Queries
 
 Queries could work by making certain types indexable. One could imagine writing `IndexForType` similar to the existing `AdapterForType`s.
 Then, class fields could get annotated with `@Index` to indicate that an index should be generated for them.
+
+```dart
+@id(#a0pWm)
+@TapeClass(nextFieldId: 1)
+class Fruit {
+  @TapeField(#a8204)
+  @Indexed(#a9mpq)
+  final String name;
+
+  @Indexed(#p1029)
+  String get lowercaseName => name.toLowercase();
+}
+```
+
+```
+@freezed
+abstract class Fruit with _$Fruit {
+  @id(#a0pWm)
+  const factory Fruit(
+    @id(#m8wWx) String name, {
+    @required int age,
+    Gender gender,
+  }) = _Fruit;
+}
+```
+
+Then, `chestgen` generates:
+
+```dart
+@TapeExtension("indexed", Fruit)
+class IndexedFruit {
+  ...
+}
+```
+
+Then, `tapegen` generates:
+
+```dart
+class FruitAdapter {
+  ...
+
+  final indexed = IndexedFruit();
+}
+```
+
+`Fruit` -> `IndexedFruit` -> `IndexedField`s
+`SomeFruit` -> ``
+
+
 
 Consider this `User` class:
 
@@ -147,7 +230,7 @@ class User {
   String get name => '$firstName $lastName';
 
   @Index
-  @TapeField(2)
+  @TapeField(fieldId: 2)
   final int age;
 }
 
@@ -158,8 +241,9 @@ abstract class User with _$User {
   @TapeClass(nextFieldId: 2)
   factory User(
     @TapeField(0) String firstName,
-    @TapeField(1) String lastName,
-    @TapeField(2) @Index int age,
+    @TapeField(fieldId: 0) String firstName,
+    @TapeField(fieldId: 1) String lastName,
+    @TapeField(fieldId: 2) @Index int age,
   ) = _User;
 
   @Index
