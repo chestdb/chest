@@ -4,12 +4,25 @@ part 'query.dart';
 
 /// A representation of a single database.
 ///
-/// # Usage
+/// You can open a [Chest] like this (you don't have to use a taco as the name):
 ///
+/// ```dart
+/// var chest = Chest('🌮');
 /// ```
-/// final chest = Chest('my_database');
+///
+/// Chest stores data in documents (or docs for short), which are stored in
+/// boxes. Chest creates boxes and docs implicitly the first time you add data
+/// to the doc. You do not need to explicitly create boxes or docs.
+///
+/// Boxes have a name, which is a [String]. Docs have a key, which can be any
+/// type (with some caveats). Boxes are also strongly typed, meaning that all
+/// keys are of the same type and values are usually of similar types.
+///
+/// For example, you might have a box called 'users' which contains documents.
+///
+/// ```dart
 /// final users = chest.box<String, User>('users');
-/// final me = users.doc('marcelgarus');
+/// final me = users.doc('marcel');
 /// print(await me.get());
 /// final myTodos = me.box('todos');
 /// final alsoMyTodos = chest.box('users').doc('marcelgarus').box('todos');
@@ -27,9 +40,11 @@ abstract class Chest {
   }
 
   Box<K, V> box<K, V>(String name);
+
+  Future<void> close();
 }
 
-/// A part of the [Chest] that contains some [Doc]s.
+/// A container for [Doc]s.
 abstract class Box<K, V> {
   Doc<V> doc(K key);
   QueryResult<V> rawQuery(Query<IndexedClass<V>> query) {

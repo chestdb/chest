@@ -14,6 +14,7 @@ void main() async {
   final users = chest.box<String, User>('users');
   final myPet = users.doc('marcelgarus').box('pets').doc(Duration.zero);
   print((myPet as VmDoc).path);
+  await chest.close();
 
   // final user = IndexedUser<User>([], identityFunction);
   // final property = user.pet.animal;

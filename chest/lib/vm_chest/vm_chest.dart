@@ -58,6 +58,11 @@ class VmChest implements Chest {
 
   @override
   Box<K, V> box<K, V>(String name) => VmBox._(this, null, name);
+
+  @override
+  Future<void> close() {
+    throw UnimplementedError();
+  }
 }
 
 class VmBox<K, V> implements Box<K, V> {
