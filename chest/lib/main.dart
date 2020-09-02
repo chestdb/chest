@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:tape/tape.dart';
+
 import 'chest.dart';
 import 'chunky/chunky.dart';
 import 'vm_chest/chunks.dart';
@@ -10,11 +12,24 @@ import 'vm_chest/vm_chest.dart';
 part 'generated.dart';
 
 void main() async {
+  Tape
+    ..registerDartCoreAdapters()
+    ..registerAdapters({
+      0: AdapterForUser(),
+      1: AdapterForPet(),
+    });
+
   final chest = Chest('🌮');
   final users = chest.box<String, User>('users');
-  final myPet = users.doc('marcelgarus').box('pets').doc(Duration.zero);
+  final myPet = users.doc('marcel').box('pets').doc(Duration.zero);
   print((myPet as VmDoc).path);
-  await chest.close();
+
+  print('Adding user.');
+  await users.doc('marcel').set(User('Marcel', Pet('hippo')));
+  print('Added user.');
+
+  // print(users.doc('marcel').get());
+  // await chest.close();
 
   // final user = IndexedUser<User>([], identityFunction);
   // final property = user.pet.animal;

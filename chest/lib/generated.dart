@@ -1,5 +1,43 @@
 part of 'main.dart';
 
+class AdapterForUser extends TapeClassAdapter<User> {
+  const AdapterForUser();
+
+  @override
+  User fromFields(Fields fields) {
+    return User(
+      fields.get<String>(0, orDefault: ''),
+      fields.get<Pet>(1, orDefault: null),
+    );
+  }
+
+  @override
+  Fields toFields(User object) {
+    return Fields({
+      0: object.name,
+      1: object.pet,
+    });
+  }
+}
+
+class AdapterForPet extends TapeClassAdapter<Pet> {
+  const AdapterForPet();
+
+  @override
+  Pet fromFields(Fields fields) {
+    return Pet(
+      fields.get<String>(0, orDefault: ''),
+    );
+  }
+
+  @override
+  Fields toFields(Pet object) {
+    return Fields({
+      0: object.animal,
+    });
+  }
+}
+
 class IndexedPet<Root> implements IndexedClass<Root> {
   IndexedPet(List<int> path, Pet Function(Root) rootToClass)
       : animal = IndexedValue([...path, 0], (root) => rootToClass(root).animal);
