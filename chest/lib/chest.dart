@@ -14,9 +14,10 @@ part 'query.dart';
 /// boxes. Chest creates boxes and docs implicitly the first time you add data
 /// to the doc. You do not need to explicitly create boxes or docs.
 ///
-/// Boxes have a name, which is a [String]. Docs have a key, which can be any
-/// type (with some caveats). Boxes are also strongly typed, meaning that all
-/// keys are of the same type and values are usually of similar types.
+/// Boxes have a name, which is a [String] and contain [Doc]s. [Doc]s have a key
+/// and a value, both of which can be any type (with some caveats). Boxes are
+/// also strongly typed, meaning that the types of keys and values are enforced
+/// at compile time.
 ///
 /// For example, you might have a box called 'users' which contains documents.
 ///

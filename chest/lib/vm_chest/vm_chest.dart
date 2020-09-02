@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:chest/chunky/chunky.dart';
 import 'package:tape/tape.dart';
@@ -23,37 +25,72 @@ import 'chunks.dart';
 /// communication. All the other messages exchanged are valid json strings and
 /// have a `type` field.
 ///
-/// {'type': 'setup', 'name': '<name of the chest>'}
-/// {'type': 'put', 'key': '<base64-encoded key>', 'value': '<base64-encoded value>'}
+/// The backend acts like a server. All communication is initially started by
+/// the clients. They use a `requestId` field to match responses to the original
+/// requests.
+/// The server might answer multiple messages to the same request. For example,
+/// the result of a query is streamed to the client – sending every document in
+/// its own message. Or a watch request causes the backend to send messages when
+/// documents are changed.
+/// Because you can access the same [Chest] from multiple [Isolate]s / clients
+/// which connect to the same backend [Isolate], it may even seem like the
+/// backend proactively sends messages if you watch docs.
+///
+/// ## Acknowledgement
+///
+/// The backend answers with this message to indicate an action is complete.
+///
+/// {'requestId': '<request id>', 'type': 'ack'}
+///
+/// ## Setup
+///
+/// This message contains information for setting up the chest.
+/// The backend answers with an ack message.
+///
+/// {
+///   'requestId': '<request id>',
+///   'type': 'setup',
+///   'name': '<name of the chest>'
+/// }
+///
+/// ## Put
+///
+/// This message is used to put a document at a specific location, creating the
+/// parent collection implicitly (if it doesn't already exist).
+/// The backend answers with an ack message.
+///
+/// {
+///   'requestId': '<request id>',
+///   'type': 'put',
+///   'path': ['string', '<base64-encoded key>'],
+///   'value': '<base64-encoded value>'
+/// }
 class VmChest implements Chest {
   VmChest(this.name) {
     _spawnBackend();
   }
 
   final String name;
+
+  final _initializer = Completer<void>();
   Isolate _isolate;
-  ReceivePort _receivePort;
   SendPort _sendPort;
+  Stream<Object> _incomingMessages;
 
   Future<void> _spawnBackend() async {
-    final _receivePort = ReceivePort();
+    final receivePort = ReceivePort();
     _isolate = await Isolate.spawn(
       _runBackend,
-      _receivePort.sendPort,
+      receivePort.sendPort,
       debugName: 'chest.$name',
     );
-    _receivePort.listen((message) {
-      if (_sendPort == null) {
-        /// The first message is a [SendPort].
-        _sendPort = message;
-        _sendPort.send(json.encode({
-          'type': 'setup',
-          'name': name,
-        }));
-      } else {
-        print('Warning: Unhandled message $message.');
-      }
-    });
+    final _incomingMessages = receivePort.map((message) {
+      print('Received message $message.');
+      return message;
+    }).asBroadcastStream();
+    _sendPort = await _incomingMessages.first;
+    await _sendRequest({'type': 'setup', 'name': name}).waitForAck();
+    _initializer.complete();
   }
 
   @override
@@ -62,7 +99,34 @@ class VmChest implements Chest {
   @override
   Future<void> close() {
     throw UnimplementedError();
+    _isolate.kill();
   }
+
+  Stream<Map<String, dynamic>> _sendRequest(Map<String, dynamic> request) {
+    final controller = StreamController<Map<String, dynamic>>();
+    final random = Random();
+    final requestId = base64.encode([
+      for (var i = 0; i < 32; i++) random.nextInt(256),
+    ]);
+    request['requestId'] = requestId;
+
+    scheduleMicrotask(() async {
+      await _initializer.future;
+      _sendPort.send(request);
+      print('Sent request $request.');
+      controller.addStream(_incomingMessages
+          .cast<String>()
+          .map(json.decode)
+          .cast<Map<String, dynamic>>()
+          .where((message) => message['requestId'] == requestId));
+    });
+    return controller.stream;
+  }
+}
+
+extension on Stream<Map<String, dynamic>> {
+  Future<void> waitForAck() =>
+      firstWhere((message) => message['type'] == 'ack');
 }
 
 class VmBox<K, V> implements Box<K, V> {
@@ -116,9 +180,12 @@ class VmDoc<K, V> implements Doc<V> {
   }
 
   @override
-  Future<void> set(V value) {
-    // TODO: implement set
-    throw UnimplementedError();
+  Future<void> set(V value) async {
+    await _chest._sendRequest({
+      'type': 'put',
+      'path': _path,
+      'value': base64.encode(tape.encode(value)),
+    }).waitForAck();
   }
 
   @override
