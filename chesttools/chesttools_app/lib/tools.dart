@@ -46,7 +46,15 @@ class ToolsPage extends StatelessWidget {
                 ),
               ),
             ),
-            Expanded(child: Center(child: Text('Hello world.'))),
+            Expanded(
+              child: Center(
+                child: Row(
+                  children: <Widget>[
+                    Text('Hello world.'),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

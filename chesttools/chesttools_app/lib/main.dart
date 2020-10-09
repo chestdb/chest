@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:vm_service/vm_service.dart';
+import 'package:vm_service/vm_service_io.dart';
 
 import 'connect.dart';
 import 'tools.dart';
 
-void main() {
+VmService service;
+
+void main() async {
+  print('Connecting…');
   runApp(ChestToolsApp());
 }
 
