@@ -116,47 +116,46 @@ Chest also organizes its data in those chunks, which allows for updating the dat
 
 These are some chunk types:
 
-- `MainChunk` is the first chunk and the entry point for most actions.
-- `FreeChunk` is a chunk that is empty and free to re-use.
-- `BucketChunk`s can hold multiple documents.
-- `BigDocChunk` can hold documents that are too large to fit into a single chunk. It's then split up and saved in multiple `BigDocChunk`s.
-- `BigDocEndChunk` marks the end of a chain of `BigDocChunk`s.
-- `DocTreeChunk` is a node in the document tree.
-- `CollectionTreeChunk` is a node in a key tree.
-- `IndexTreeChunk` is a node in an index tree.
+- The `MainChunk` is the first chunk and *the* entry point for all actions. It points to several important locations:
+  - The first `FreeChunk`.
+  - The doc tree, which is an int-to-payload-tree that maps document IDs to the `BucketChunk`s that contain the actual document data.
+  - The root box tree, which is a payload-to-int-tree that maps root box names to `BoxChunk`s.
+- `FreeChunk`s are empty and free to re-use. They are created when some data gets removed, causing chunks to be freed.
+  `FreeChunk`s form a linked list: The first `FreeChunk` is pointed to by the `MainChunk` and each `FreeChunk` points to another one – except the last one, which points to 0, the `MainChunk`.
+  The order in which the `FreeChunk`s point to one another doesn't need to correlate with the actual location of the chunks in the file. Rather, the linked list resembles the order in which they were freed.
+  Chunks that become free are added at the front of the list and newly reserved chunks are taken from the front. That means if a chunk gets freed and re-used in the same transaction, no data actually needs to be written to disk (because the data is diffed before writing).
+- Chunks for int-to-payload-trees (these are implemented as B-plus-trees)
+  - `IntToPayloadTreeInnerChunk`
+  - `IntToPayloadTreeLeafChunk`
+- Chunks for payload-to-int-trees (these are implemented as normal B-trees)
+  - `PayloadToIntTreeInnerChunk`
+  - `PayloadToIntTreeLeafChunk`
+- `BucketChunk`s contain multiple payloads. Payloads that are larger than a threshold get broken up into pieces; only the start will be saved in the `BucketChunk` itself, the rest gets written into `OverflowChunk`s.
+- `OverflowChunk`s hold payloads that are too big to efficiently store in a single chunk.
+- `BoxChunk`s each contain information about a single box (the box name, stats, payload-to-int-tree from keys to doc-ids, indizes).
 
 ## Chest layout
 
-- once: MainChunk
-  - points to first free chunk
-  - maps doc id -> doc
-  - has list of child boxes
-  - has statistics
-- each box: BoxChunk
-  - maps key id -> key
-  - maps key -> doc id
-- each doc:
-  - key id
-  - points to parent box
-  - payload
-  - has child of child boxes
+Two users with two posts each, each with two comments.
 
-two users with two posts, each two comments
+1x MainChunk: stats
+doc tree
+  1x IntToPayloadTreeLeafChunk
+doc data
+  4x BucketChunk
+box tree
+  1x PayloadToIntTreeLeafChunk
+'users' box
+  1x BoxChunk
+  1x PayloadToIntTreeLeafChunk
+2x 'posts', each:
+  1x BoxChunk
+  1x PayloadToIntTreeLeafChunk
+4x 'comments', each:
+  1x BoxChunk
+  1x PayloadToIntTreeLeafChunk
 
-MainChunk: stats
-BoxListChunk: posts and users
-BoxChunk: posts
-Map: post key -> post id
-Map: post id -> chunk index
-2x BoxChunk: comments
-   Map: comment key -> comment id 
-   Map: comment id -> chunk index
-BoxChunk: users
-Map: user key -> user id
-Map: user id -> chunk index
-BucketChunk: posts, keys, users, comments
-
-4 boxes, 8 docs, 15 chunks
+21 chunks
 
 ## Queries
 
@@ -164,8 +163,7 @@ Queries could work by making certain types indexable. One could imagine writing 
 Then, class fields could get annotated with `@Index` to indicate that an index should be generated for them.
 
 ```dart
-@id(#a0pWm)
-@TapeClass(nextFieldId: 1)
+@t(#ab) @taped
 class Fruit {
   @TapeField(#a8204)
   @Indexed(#a9mpq)
