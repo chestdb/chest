@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:chest/utils.dart';
 import 'package:convert/convert.dart';
 import 'package:meta/meta.dart';
 
-import 'package:chest/vm_chest/chunks.dart';
-
 import 'files.dart';
+import 'constants.dart';
+
+export 'constants.dart';
 
 part 'chunk.dart';
 
@@ -17,7 +19,7 @@ typedef TransactionCallback<T> = FutureOr<T> Function(Transaction);
 
 /// [Chunky] offers low-level primitives of loading parts of a file (so-called
 /// "chunks") into memory, and writing in atomic batches. Those chunks all have
-/// the same size: [chunkSize].
+/// the same size: [chunkLength].
 ///
 /// [Chunky] actually manages two files:
 /// - The chunk file holds the actual chunk data (this can be a lot of data).
@@ -125,13 +127,13 @@ class Transaction {
 
   void _commit() {
     final differentChunks = _newChunks.entries
-        .where((entry) =>
-            !_originalChunks.containsKey(entry.key) || entry.value.isDirty)
-        .where((entry) => entry.value._data != _originalChunks[entry.key])
+        .whereKeyValue((index, chunk) =>
+            !_originalChunks.containsKey(index) || chunk.isDirty)
+        .whereKeyValue((index, chunk) => chunk._data != _originalChunks[index])
         .toList();
     print('Changed chunks:');
     for (final chunk in differentChunks) {
-      print('${chunk.key}: ${chunk.value.parse()}');
+      print('${chunk.key}: ${chunk.value}');
     }
     if (differentChunks.isEmpty) {
       return; // Nothing changed.
@@ -168,81 +170,6 @@ class Transaction {
 class ChunkDataPool {
   final _data = <ChunkData>[];
 
-  ChunkData reserve() {
-    return _data.isEmpty ? ChunkData() : _data.removeAt(0);
-  }
-
-  void free(ChunkData chunk) {
-    _data.add(chunk);
-  }
+  ChunkData reserve() => _data.isEmpty ? ChunkData() : _data.removeAt(0);
+  void free(ChunkData chunk) => _data.add(chunk);
 }
-
-/*
-class Chunky {
-  /// How many chunks the chunk file contains.
-  int get numberOfChunks => _numberOfChunks;
-  int _numberOfChunks;
-}
-
-class ChunkyTransaction {
-  /// How many chunks the chunk file contains.
-  int get numberOfChunks => _numberOfChunks;
-  int _numberOfChunks;
-
-  int add(Chunk chunk) {
-    assert(!_isCommitted);
-
-    final index = _numberOfChunks;
-    write(index, chunk);
-    return index;
-  }
-
-  void _commit() {
-    final chunkBuffer = Chunk();
-    _transactionFile
-      ..flush()
-      ..goTo(0)
-      ..writeByte(255)
-      ..flush();
-
-    // Rather than going through the transaction file and applying the changes
-    // one by one, we combine multiple changes to the same chunk into one change
-    // by only applying all [changedChunks] once.
-    for (final entry in _changedChunks.entries) {
-      final index = entry.key;
-      final offset = entry.value;
-      _transactionFile
-        ..goTo(offset)
-        ..readChunkInto(chunkBuffer);
-      _chunky._write(index, chunkBuffer);
-    }
-
-    _chunky._flush();
-    _transactionFile
-      ..goTo(0)
-      ..writeByte(0)
-      ..flush();
-  }
-
-  static restoreIfCommitted(SyncFile _transactionFile, SyncFile _chunkFile) {
-    _transactionFile.goTo(0);
-    if (_transactionFile.length() == 0 || _transactionFile.readByte() == 0) {
-      // The file doesn't contain a committed transaction.
-      return;
-    }
-
-    // Restore the committed transaction.
-    final chunkBuffer = Chunk();
-    final length = _transactionFile.length();
-    var position = 1;
-
-    while (position < length) {
-      final index = _transactionFile.readInt();
-      _transactionFile.readChunkInto(chunkBuffer);
-      _chunkFile
-        ..goToIndex(index)
-        ..writeChunk(chunkBuffer);
-      position += 8 + chunkSize;
-    }
-  }
-}*/

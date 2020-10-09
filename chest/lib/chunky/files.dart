@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'chunky.dart';
+import 'constants.dart';
 
 /// A file representation that only offers synchronous operations useful to the
 /// [ChunkManager].
@@ -52,19 +53,19 @@ class SyncFile {
 ///
 /// # Layout
 ///
-/// | chunk        | chunk        | chunk        | ... |
-/// | [chunkSize]B | [chunkSize]B | [chunkSize]B |     |
+/// | chunk         | chunk         | chunk         | ... |
+/// | [chunkLength] B | [chunkLength] B | [chunkLength] B |     |
 class ChunkFile {
   ChunkFile(this.file);
 
   final SyncFile file;
 
-  int get numberOfChunks => file.length() ~/ chunkSize;
+  int get numberOfChunks => file.length() ~/ chunkLength;
   void writeChunk(int index, ChunkData chunk) => file
-    ..goTo(index * chunkSize)
+    ..goTo(index * chunkLength)
     ..writeBytes(chunk.bytes);
   void readChunkInto(int index, ChunkData chunk) => file
-    ..goTo(index * chunkSize)
+    ..goTo(index * chunkLength)
     ..readBytesInto(chunk.bytes);
 }
 
@@ -78,7 +79,7 @@ class ChunkFile {
 /// # Layout
 ///
 /// | committed? | index | chunk        | index | chunk        | ... |
-/// | 1B         | 8B    | [chunkSize]B | 8B    | [chunkSize]B |     |
+/// | 1 B        | 4 B   | [chunkLength]B | 8B    | [chunkLength]B |     |
 ///
 /// The commit byte indicates whether the changes are ready to be applied to the
 /// [ChunkFile] (it's 0 or 255). For each change, the chunk index and
@@ -137,7 +138,7 @@ class TransactionFileReader {
   TransactionFileReader(this._file) {
     _length = _file.length();
     _file.goToStart();
-    _file.readByte() != 0;
+    assert(_file.readByte() != 0);
   }
 
   final SyncFile _file;
@@ -150,7 +151,7 @@ class TransactionFileReader {
   /// data in the given [chunk].
   int next(ChunkData chunk) {
     _file.goTo(_cursor);
-    _cursor += 8 + chunkSize;
+    _cursor += 8 + chunkLength;
     final index = _file.readInt();
     _file.readBytesInto(chunk.bytes);
     return index;

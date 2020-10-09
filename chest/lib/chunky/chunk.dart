@@ -1,10 +1,5 @@
 part of 'chunky.dart';
 
-// const chunkSize = 4 * 1024; // 4 KiB
-// const chunkSize = 64;
-// const chunkSize = 128;
-const chunkSize = 1024;
-
 abstract class Chunk {
   void setUint8(int offset, int value);
   int getUint8(int offset);
@@ -26,12 +21,12 @@ abstract class Chunk {
 }
 
 class ChunkData implements Chunk {
-  ChunkData() : this.fromByteData(ByteData(chunkSize));
+  ChunkData() : this.fromByteData(ByteData(chunkLength));
   ChunkData.fromByteData(this.byteData)
-      : assert(byteData.lengthInBytes == chunkSize),
+      : assert(byteData.lengthInBytes == chunkLength),
         bytes = Uint8List.view(byteData.buffer);
   ChunkData.fromUint8List(this.bytes)
-      : assert(bytes.length == chunkSize),
+      : assert(bytes.length == chunkLength),
         byteData = ByteData.view(bytes.buffer);
   factory ChunkData.copyOf(ChunkData other) => ChunkData()..copyFrom(other);
 
