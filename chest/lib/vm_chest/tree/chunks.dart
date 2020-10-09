@@ -1,40 +1,59 @@
-import 'package:chest/chunky/chunky.dart';
+import 'dart:collection';
+import 'dart:math';
 
+import 'package:chest/chunky/chunky.dart';
+import 'package:meta/meta.dart';
+
+import '../overflow_chunk.dart';
 import '../utils.dart';
 
-// To make sense of all the code here, you should first understand B+ trees:
+// To make sense of all the code here, you should first understand B trees:
 // https://en.wikipedia.org/wiki/B%2B_tree
 
-// The [IntMap] maps [int]s to [int]s.
+// The tree maps lists of bytes to single [int]s.
 
-// Keys, children (child chunk ids) and values are both encoded as 64-bit integers.
-extension on Chunk {
-  int getKey(int offset) => getInt64(offset);
-  void setKey(int offset, int key) => setInt64(offset, key);
-
-  int getChild(int offset) => getChunkIndex(offset);
-  void setChild(int offset, int child) => setChunkIndex(offset, child);
-
-  int getValue(int offset) => getInt64(offset);
-  void setValue(int offset, int value) => setInt64(offset, value);
-}
-
-const _keyLength = 8;
 const _childLength = chunkIndexLength;
-const _valueLength = 8;
+const _keyHeaderLength = offsetLength;
 
-/// A chunk that represents an internal node in an [IntMap].
+/// A chunk that represents an internal node in a [PayloadToIntTree].
 ///
-/// The keys of the node are [int]s, the children are indizes of chunks.
+/// The keys of the node are keys as described in `key.dart`, the children are
+/// indizes of chunks.
 ///
 /// # Layout
 ///
+/// Here's the high-level layout of the whole chunk:
+///
 /// ```
-/// | type | num keys | child | key | child | key | child | ...  | key | child |
-/// | 1B   | 2B       | 8B    | 8B  | 8B    | 8B  | 8B    |      | 8B  | 8B    |
+/// | PayloadToIntTreeInnerChunk                                               |
+/// | header                  | n key headers & n+1 children | keys            |
+/// | chunk header | num keys |                              |                 |
 /// ```
+///
+/// For actual sizes, see [_headerLength].
+///
+/// The second section contains key headers and children, organized like this:
+///
+/// ```
+/// | n key headers & n+1 children                                             |
+/// | child | key header | child | key header | ...       | key header | child |
+/// ```
+///
+/// For actual sizes, see [_childLength] and [_keyHeaderLength].
 /// Note it always contains one more child than keys.
-class IntMapInternalNodeChunk extends ChunkWrapper {
+///
+/// Inside the third section, the actual keys are stored.
+///
+/*class PayloadToIntTreeInnerChunk extends ChunkWrapper {
+  static const _headerLength = chunkHeaderLength + offsetLength;
+  
+  PayloadToIntTreeInnerChunk(this.chunk)
+      : super(ChunkTypes.payloadToIntTreeInner);
+
+  final TransactionChunk chunk;
+}
+
+class IntMapInnerChunk extends ChunkWrapper {
   static const _headerLength = 3;
   static const _entryLength = _keyLength + _childLength;
   static const maxKeys =
@@ -149,4 +168,4 @@ class IntMapLeafNodeChunk extends ChunkWrapper {
     buffer.write('}');
     return buffer.toString();
   }
-}
+}*/

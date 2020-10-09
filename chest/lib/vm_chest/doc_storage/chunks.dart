@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:chest/chunky/chunky.dart';
 import 'package:meta/meta.dart';
 
-import '../chunks.dart';
 import '../utils.dart';
 
 abstract class StorageChunk extends ChunkWrapper {
@@ -23,7 +22,7 @@ abstract class StorageChunk extends ChunkWrapper {
 /// ```
 class BucketChunk extends StorageChunk {
   static const _headerEntryLength = docIdLength + offsetLength;
-  static const maxPayload = chunkSize - 1 - 2 - _headerEntryLength;
+  static const maxPayload = chunkLength - 1 - 2 - _headerEntryLength;
 
   BucketChunk(this.chunk) : super(ChunkTypes.bucket) {
     _headers = BackedList(
@@ -53,7 +52,7 @@ class BucketChunk extends StorageChunk {
   bool get isNotEmpty => !isEmpty;
 
   int get _freeSpaceStart => 3 + _headerEntryLength * _headers.length;
-  int get _freeSpaceEnd => isEmpty ? chunkSize : (_headers.last.offset - 1);
+  int get _freeSpaceEnd => isEmpty ? chunkLength : (_headers.last.offset - 1);
   int get _freeSpace => _freeSpaceEnd - _freeSpaceStart;
   bool doesFit(int length) => _freeSpace >= _headerEntryLength + length;
 
@@ -63,7 +62,7 @@ class BucketChunk extends StorageChunk {
       return null;
     }
     final dataStart = result.item.offset;
-    final dataEnd = result.nextItem?.offset ?? chunkSize;
+    final dataEnd = result.nextItem?.offset ?? chunkLength;
     final length = dataEnd - dataStart;
     return Uint8List.fromList(chunk.getBytes(dataStart, length));
   }
@@ -82,7 +81,7 @@ class BucketChunk extends StorageChunk {
     assert(contains(docId));
 
     final result = _headers.findHeader(docId);
-    var deletedEnd = result.previousItem?.offset ?? chunkSize;
+    var deletedEnd = result.previousItem?.offset ?? chunkLength;
 
     for (var i = result.index; i < _headers.length - 1; i++) {
       final nextHeader = _headers[i + 1];
@@ -143,7 +142,7 @@ abstract class BigDocStorageChunk extends StorageChunk {
 /// ```
 class BigDocChunk extends BigDocStorageChunk {
   static const headerLength = 1 + docIdLength + 8 + chunkIndexLength;
-  static const maxPayload = chunkSize - headerLength;
+  static const maxPayload = chunkLength - headerLength;
 
   BigDocChunk(this.chunk) : super(ChunkTypes.bigDoc);
 
@@ -169,7 +168,7 @@ class BigDocChunk extends BigDocStorageChunk {
 /// ```
 class BigDocNextChunk extends BigDocStorageChunk {
   static const headerLength = 1 + chunkIndexLength;
-  static const maxPayload = chunkSize - headerLength;
+  static const maxPayload = chunkLength - headerLength;
 
   BigDocNextChunk(this.chunk) : super(ChunkTypes.bigDocEnd);
 

@@ -1,6 +1,5 @@
 import 'package:chest/chunky/chunky.dart';
 
-import 'chunks.dart';
 import 'utils.dart';
 
 /// The frist chunk, which is the entry point to all actions.

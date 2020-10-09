@@ -5,10 +5,12 @@ import 'dart:isolate';
 import 'dart:math';
 
 import 'package:chest/chunky/chunky.dart';
+import 'package:meta/meta.dart';
 import 'package:tape/tape.dart';
 
 import '../chest.dart';
-import 'chunks.dart';
+import 'backend.dart';
+import 'utils.dart';
 
 /// An implementation of [Chest] for the Dart VM.
 ///
@@ -72,6 +74,8 @@ class VmChest implements Chest {
 
   final String name;
 
+  /// Completes as soon as bidirectional communication channels [_sendPort] and
+  /// [_incomingMessages] are established.
   final _initializer = Completer<void>();
   Isolate _isolate;
   SendPort _sendPort;
@@ -84,13 +88,10 @@ class VmChest implements Chest {
       receivePort.sendPort,
       debugName: 'chest.$name',
     );
-    final _incomingMessages = receivePort.map((message) {
-      print('Received message $message.');
-      return message;
-    }).asBroadcastStream();
+    _incomingMessages = receivePort.asBroadcastStream();
     _sendPort = await _incomingMessages.first;
-    await _sendRequest({'type': 'setup', 'name': name}).waitForAck();
     _initializer.complete();
+    await _sendRequest(SetupRequest(name)).waitForAck();
   }
 
   @override
@@ -99,34 +100,29 @@ class VmChest implements Chest {
   @override
   Future<void> close() {
     throw UnimplementedError();
-    _isolate.kill();
+    // _isolate.kill(); // TODO: implement
   }
 
-  Stream<Map<String, dynamic>> _sendRequest(Map<String, dynamic> request) {
-    final controller = StreamController<Map<String, dynamic>>();
-    final random = Random();
-    final requestId = base64.encode([
-      for (var i = 0; i < 32; i++) random.nextInt(256),
-    ]);
-    request['requestId'] = requestId;
+  /// Sends the given [request] and answers with a [Stream] of [Response]s to
+  /// that request.
+  Stream<Response> _sendRequest(Request request) {
+    final controller = StreamController<Response>();
 
     scheduleMicrotask(() async {
       await _initializer.future;
       _sendPort.send(request);
-      print('Sent request $request.');
+      print('-> $request.');
       controller.addStream(_incomingMessages
-          .cast<String>()
-          .map(json.decode)
-          .cast<Map<String, dynamic>>()
-          .where((message) => message['requestId'] == requestId));
+          .cast<Response>()
+          .where((response) => response.requestId == request.id));
     });
     return controller.stream;
   }
 }
 
-extension on Stream<Map<String, dynamic>> {
+extension on Stream<Response> {
   Future<void> waitForAck() =>
-      firstWhere((message) => message['type'] == 'ack');
+      firstWhere((response) => response is AckResponse);
 }
 
 class VmBox<K, V> implements Box<K, V> {
@@ -162,30 +158,27 @@ class VmDoc<K, V> implements Doc<V> {
   Box<K, W> box<K, W>(String name) => VmBox._(_chest, this, name);
 
   @override
-  Future<bool> exists() {
-    // TODO: implement exists
+  Future<bool> exists() async {
     throw UnimplementedError();
+    await _chest._sendRequest(ExistsRequest(_path));
   }
 
   @override
-  Future<V> get() {
-    // TODO: implement get
+  Future<V> get() async {
     throw UnimplementedError();
+    await _chest._sendRequest(GetRequest(_path));
   }
 
   @override
-  Future<void> remove() {
-    // TODO: implement remove
-    throw UnimplementedError();
+  Future<void> remove() async {
+    await _chest._sendRequest(RemoveRequest(_path)).waitForAck();
   }
 
   @override
   Future<void> set(V value) async {
-    await _chest._sendRequest({
-      'type': 'put',
-      'path': _path,
-      'value': base64.encode(tape.encode(value)),
-    }).waitForAck();
+    await _chest
+        ._sendRequest(SetRequest(_path, tape.encode(value)))
+        .waitForAck();
   }
 
   @override
@@ -195,70 +188,113 @@ class VmDoc<K, V> implements Doc<V> {
   }
 }
 
+/// This is the entrypoint for the backend isolate.
 Future<void> _runBackend(SendPort sendPort) async {
   final receivePort = ReceivePort();
   sendPort.send(receivePort.sendPort);
 
-  _ChestVmBackend().run(sendPort, receivePort);
+  print('Not running backend.');
+  // VmBackend().run(sendPort, receivePort);
 }
 
-class _ChestVmBackend {
-  SendPort _sendPort;
-  ReceivePort _receivePort;
-  String _name;
-  Chunky _chunky;
-  int _index = 0;
-  final _chunk = ChunkData();
+@sealed
+class Request {
+  Request(this.id);
 
-  Future<void> run(SendPort sendPort, ReceivePort receivePort) async {
-    _sendPort = sendPort;
-    _receivePort = receivePort;
-
-    receivePort.listen((message) {
-      final data = json.decode(message) as Map<String, dynamic>;
-      print('Message is $message');
-      final handler = {
-        'setup': setup,
-        'put': put,
-      }[data['type']];
-      if (handler == null) {
-        print('Unhandled message type: ${data['type']}');
-      } else {
-        handler(data);
-      }
-    });
-
-    _registerServiceMethods();
+  Request.withRandomId() {
+    final random = Random();
+    id = base64.encode([
+      for (var i = 0; i < 32; i++) random.nextInt(256),
+    ]);
   }
 
-  void setup(Map<String, dynamic> message) {
-    _name = message['name'];
-    _chunky = Chunky('$_name.chest');
+  String id;
+}
 
-    if (_chunky.numberOfChunks == 0) {
-      _chunky.transaction((chunky) {
-        if (chunky.numberOfChunks == 0) {
-          chunky.addTyped(ChunkTypes.main);
-        }
-      });
-    }
-  }
+class SetupRequest extends Request {
+  SetupRequest(this.name) : super.withRandomId();
 
-  void put(Map<String, dynamic> message) {
-    final key = base64.decode(message['key'] as String);
-    final value = base64.decode(message['value'] as String);
-    print('Adding $key: $value');
-  }
+  final String name;
 
-  void _put(List<int> key, List<int> value) {}
+  @override
+  String toString() => 'SetupRequest@$id($name)';
+}
 
-  void _registerServiceMethods() {
-    registerExtension('ext.chest.num_chunks', (method, parameters) async {
-      print("Returning the number of chunks.");
-      return ServiceExtensionResponse.result(json.encode({
-        'type': 'size',
-        'size': _index,
-      }));
-    });
-  }
+class ExistsRequest extends Request {
+  ExistsRequest(this.path) : super.withRandomId();
+
+  final List<Object> path;
+
+  @override
+  String toString() => 'ExistsRequest@$id($path)';
+}
+
+class SetRequest extends Request {
+  SetRequest(this.path, this.value) : super.withRandomId();
+
+  final List<Object> path;
+  final Object value;
+
+  @override
+  String toString() => 'SetRequest@$id($path: $value)';
+}
+
+class GetRequest extends Request {
+  GetRequest(this.path) : super.withRandomId();
+
+  final List<Object> path;
+
+  @override
+  String toString() => 'GetRequest@$id($path)';
+}
+
+class RemoveRequest extends Request {
+  RemoveRequest(this.path) : super.withRandomId();
+
+  final List<Object> path;
+
+  @override
+  String toString() => 'RemoveRequest@$id($path)';
+}
+
+class WatchRequest extends Request {
+  WatchRequest(this.path) : super.withRandomId();
+
+  final List<Object> path;
+
+  @override
+  String toString() => 'WatchRequest@$id($path)';
+}
+
+class QueryRequest extends Request {
+  QueryRequest(this.path, this.query) : super.withRandomId();
+
+  final List<Object> path;
+  final Query<dynamic> query;
+
+  @override
+  String toString() => 'QueryRequest@$id($path, $query)';
+}
+
+@sealed
+class Response {
+  Response(Request request) : requestId = request.id;
+
+  final String requestId;
+}
+
+class AckResponse extends Response {
+  AckResponse(Request request) : super(request);
+
+  @override
+  String toString() => 'AckResponse@$requestId';
+}
+
+class ValueResponse extends Response {
+  ValueResponse(Request request, this.value) : super(request);
+
+  final dynamic value;
+
+  @override
+  String toString() => 'ValueResponse@$requestId($value)';
 }

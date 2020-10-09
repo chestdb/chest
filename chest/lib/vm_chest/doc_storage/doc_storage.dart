@@ -6,7 +6,7 @@ import 'package:chest/chunky/chunky.dart';
 import 'chunks.dart';
 import '../int_map/int_map.dart';
 import '../chunk_manager/chunk_manager.dart';
-import '../chunks.dart';
+import '../utils.dart';
 
 class DocStorage {
   static const _numRandomTriesDuringInsertions = 2;
