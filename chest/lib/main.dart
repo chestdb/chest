@@ -1,61 +1,128 @@
-import 'dart:math';
+// import 'package:tape/tape.dart';
 
-import 'package:tape/tape.dart';
+import 'dart:convert';
 
 import 'chest.dart';
-import 'chunky/chunky.dart';
-import 'vm_chest/chunks.dart';
-import 'vm_chest/doc_storage/doc_storage.dart';
-import 'vm_chest/int_map/chunks.dart';
-import 'vm_chest/vm_chest.dart';
-
-part 'generated.dart';
+import 'tape/blocks.dart';
+import 'tape/bytes.dart';
+import 'tape/compress.dart';
+import 'tape/tapers.dart';
 
 void main() async {
-  Tape
-    ..registerDartCoreAdapters()
-    ..registerAdapters({
-      0: AdapterForUser(),
-      1: AdapterForPet(),
-    });
+  tape.register({
+    ...tapers.forDartCore(),
+    0: taper.forUser(),
+    1: taper.forPet(),
+  });
 
-  final chest = Chest('🌮');
-  final users = chest.box<String, User>('users');
-  final myPet = users.doc('marcel').box('pets').doc(Duration.zero);
-  print((myPet as VmDoc).path);
+  print(User('Marcel', Pet('Katzi')).toBlock().toBytes().compress());
+  // return;
 
-  print('Adding user.');
-  await users.doc('marcel').set(User('Marcel', Pet('hippo')));
-  print('Added user.');
+  /// Chests are a storage for global, persisted variables.
+  final foo = await Chest.open<int>('🌮', ifNew: () => 0);
+  foo.value = 42;
+  print(foo.value);
+  await Future.delayed(Duration(milliseconds: 250));
+  print(foo.value);
 
-  // print(users.doc('marcel').get());
-  // await chest.close();
-
-  // final user = IndexedUser<User>([], identityFunction);
-  // final property = user.pet.animal;
-  // print('Property has path ${property.path}');
-  // final userInstance = User('Marcel', Pet('hippo'));
-  // print('user.pet.animal property of instance is '
-  //     '${property.fromRoot(userInstance)}');
-  // Box<Object, User> someBox;
-  // someBox.query((user) {
-  //   return user.name.equals('Marcel') & user.pet.animal.startsWith('h');
-  // });
+  // print('The pet is named ${user.pet.name.get()}');
+  await foo.close();
 }
 
-class Pet {
-  Pet(this.animal);
-
-  final String animal;
-
-  String toString() => 'Pet($animal)';
-}
-
+@tape
 class User {
   User(this.name, this.pet);
 
   final String name;
   final Pet pet;
 
-  String toString() => 'User($name)';
+  String toString() => 'User($name, $pet)';
+}
+
+@tape
+class Pet {
+  Pet(this.name);
+
+  final String name;
+
+  String toString() => 'Pet($name)';
+}
+
+// ================================= generated =================================
+
+extension TapersForDartCore on TapersForPackageApi {
+  Map<int, Taper<dynamic>> forDartCore() {
+    return {
+      -1: taper.forString(),
+    };
+  }
+}
+
+// String
+
+extension TaperForString on TaperApi {
+  Taper<String> forString() => _TaperForString();
+}
+
+class _TaperForString extends BytesTaper<String> {
+  String get name => 'String';
+
+  List<int> toBytes(String value) => utf8.encode(value);
+  String fromBytes(List<int> bytes) => utf8.decode(bytes);
+}
+
+extension TaperForUser on TaperApi {
+  Taper<User> forUser() => _TaperForUser();
+}
+
+// User
+
+class _TaperForUser extends ClassTaper<User> {
+  String get name => 'User';
+
+  Map<String, Object> toFields(User value) {
+    return {
+      'name': value.name,
+      'pet': value.pet,
+    };
+  }
+
+  User fromFields(Map<String, Object> fields) {
+    return User(
+      fields['name'] as String,
+      fields['pet'] as Pet,
+    );
+  }
+}
+
+extension UserRefs on Ref<User> {
+  Ref<String> get name => child('name');
+  Ref<int> get age => child('age');
+  Ref<Pet> get pet => child('pet');
+}
+
+// Pet
+
+extension TaperForPet on TaperApi {
+  Taper<Pet> forPet() => _TaperForPet();
+}
+
+class _TaperForPet extends ClassTaper<Pet> {
+  String get name => 'Pet';
+
+  Map<String, Object> toFields(Pet value) {
+    return {
+      'name': value.name,
+    };
+  }
+
+  Pet fromFields(Map<String, Object> fields) {
+    return Pet(
+      fields['name'] as String,
+    );
+  }
+}
+
+extension PetRefs on Ref<Pet> {
+  Ref<String> get name => child('name');
 }
