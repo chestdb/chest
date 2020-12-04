@@ -11,7 +11,7 @@ import 'package:tape/tape.dart';
 import 'utils.dart';
 import 'vm_chest.dart';
 
-/*class VmBackend {
+class VmBackend {
   /// Completes as soon as [_chunky] is initialized.
   final _initializer = Completer<void>();
   SendPort _sendPort;
@@ -90,4 +90,4 @@ import 'vm_chest.dart';
       }));
     });
   }
-}*/
+}
