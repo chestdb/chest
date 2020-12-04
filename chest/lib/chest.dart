@@ -1,68 +1,99 @@
-import 'vm_chest/vm_chest.dart';
+import 'storage/debug/storage.dart';
+import 'storage/storage.dart';
 
 part 'query.dart';
 
-/// A representation of a single database.
-///
-/// You can open a [Chest] like this (you don't have to use a taco as the name):
-///
-/// ```dart
-/// var chest = Chest('🌮');
-/// ```
-///
-/// Chest stores data in documents (or docs for short), which are stored in
-/// boxes. Chest creates boxes and docs implicitly the first time you add data
-/// to the doc. You do not need to explicitly create boxes or docs.
-///
-/// Boxes have a name, which is a [String] and contain [Doc]s. [Doc]s have a key
-/// and a value, both of which can be any type (with some caveats). Boxes are
-/// also strongly typed, meaning that the types of keys and values are enforced
-/// at compile time.
-///
-/// For example, you might have a box called 'users' which contains documents.
-///
-/// ```dart
-/// final users = chest.box<String, User>('users');
-/// final me = users.doc('marcel');
-/// print(await me.get());
-/// final myTodos = me.box('todos');
-/// final alsoMyTodos = chest.box('users').doc('marcelgarus').box('todos');
-/// ```
-///
-/// # Limitations
-///
-/// - Queries cannot cover multiple [Chest]s.
-/// - On the VM, each [Chest] is stored in one file. Your OS may limit the
-///   number of simultaneously opened files (typically a huge number).
-abstract class Chest {
-  factory Chest(String name) {
-    // TODO: Conditionally use VmChest or WebChest.
-    return VmChest(name);
+/// A container for a variable that's persisted beyond the app's lifetime.
+class Chest<T> implements Ref<T> {
+  static Future<Chest<T>> open<T>(
+    String name, {
+    required T Function() ifNew,
+  }) async {
+    // TODO: Conditionally use VmStorage or WebStorage.
+    final storage = DebugStorage();
+    final firstUpdate = await storage.events
+        .where((event) => event is ValueUpdateEvent)
+        .cast<ValueUpdateEvent>()
+        .first;
+    return Chest._(
+      name: name,
+      storage: storage,
+      initialValue: firstUpdate.value,
+    );
   }
 
-  Box<K, V> box<K, V>(String name);
-
-  Future<void> close();
-}
-
-/// A container for [Doc]s.
-abstract class Box<K, V> {
-  Doc<V> doc(K key);
-  QueryResult<V> rawQuery(Query<IndexedClass<V>> query) {
-    print('Executing raw query $query.');
-    return null;
+  Chest._({
+    required this.name,
+    required Storage storage,
+    required List<int> initialValue,
+  })   : _storage = storage,
+        _value = initialValue {
+    _storage.events.listen((event) {
+      if (event is ValueUpdateEvent) {
+        print('Value set to $event.');
+        _value = event.value;
+      } else {
+        throw UnimplementedError('Handling of $event not implemented.');
+      }
+    });
   }
+
+  final String name;
+  final Storage _storage;
+  List<int> _value;
+
+  Future<void> flush() async {
+    _storage.run(FlushAction());
+    // TODO: Wait for storage to answer.
+  }
+
+  Future<void> close() async {
+    _storage.run(CloseAction());
+    // TODO: Wait for storage to answer.
+    // TODO: Make this invalid.
+  }
+
+  set value(T newValue) {
+    // TODO: Encode new value.
+    _storage.run(SetValueAction(Path([]), [42]));
+  }
+
+  T get value => get();
+
+  @override
+  T get() => getAt(Path.root);
+
+  R getAt<R>(Path path) {
+    if (path.keys.isEmpty) {
+      return _value.first as R;
+    }
+    throw UnimplementedError();
+  }
+
+  Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
 }
 
-/// A [Doc]ument holding some data.
-///
-/// Can have [Box]es as children.
-abstract class Doc<V> {
-  Box<K, W> box<K, W>(String name);
+class Path {
+  const Path(this.keys);
+  static const root = Path([]);
 
-  Future<bool> exists();
-  Future<void> set(V value);
-  Future<V> get();
-  Future<void> remove();
-  Stream<V> watch();
+  final List<Object?> keys;
 }
+
+/// A reference to an interior part of the same [Chest].
+abstract class Ref<T> {
+  Ref<R> child<R>(Object key);
+  T get();
+}
+
+class _FieldRef<T> implements Ref<T> {
+  _FieldRef(this.chest, this.path);
+
+  final Chest chest;
+  final Path path;
+
+  Ref<R> child<R>(Object key) => _FieldRef(chest, Path([...path.keys, key]));
+  T get() => chest.getAt(path);
+}
+
+final chests = <String, Chest>{};
