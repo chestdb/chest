@@ -1,11 +1,7 @@
 name: chest
 
 dependencies:
-  meta: any
   convert: any
-  tape:
-    path: ../../tape/tape
-  quiver: any
 
 dev_dependencies:
   build_runner: any
