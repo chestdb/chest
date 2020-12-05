@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'blocks.dart';
 import 'storage/debug/storage.dart';
 import 'storage/storage.dart';
+import 'storage/vm/storage.dart';
 import 'tapers.dart';
 import 'utils.dart';
 import 'value.dart';
@@ -16,7 +17,7 @@ class Chest<T> implements Ref<T> {
   }) async {
     assert(tape.isInitialized);
     // TODO: Conditionally use VmStorage or WebStorage.
-    final storage = DebugStorage();
+    final storage = await VmStorage.open(name); // DebugStorage
     print('Initialized storage $storage.');
     var initialValue = await storage.getValue();
     print('First update is $initialValue.');
