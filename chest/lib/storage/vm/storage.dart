@@ -48,8 +48,8 @@ class VmStorage implements Storage {
       events: incoming.cast<Event>(),
       sendAction: answer.sendPort.send,
       dispose: () {
+        answer.sendPort.send(CloseAction());
         receivePort.close();
-        isolate.kill();
       },
     );
   }
@@ -118,6 +118,9 @@ Future<void> _runBackend(SetupInfo info) async {
     name: info.name,
     incomingActions: receivePort.cast<Action>(),
     sendEvent: info.sendPort.send,
+    dispose: () {
+      receivePort.close();
+    },
   );
 }
 

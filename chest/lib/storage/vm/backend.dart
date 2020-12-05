@@ -27,6 +27,7 @@ class VmBackend {
     required String name,
     required Stream<Action> incomingActions,
     required this.sendEvent,
+    required this.dispose,
   }) : _file = SyncFile('$name.chest') {
     incomingActions.listen(_handleAction);
     _registerServiceMethods();
@@ -34,6 +35,7 @@ class VmBackend {
 
   final SyncFile _file;
   final void Function(Event event) sendEvent;
+  final void Function() dispose;
 
   Future<void> _handleAction(Action action) async {
     print('Handling action $action.');
@@ -60,6 +62,10 @@ class VmBackend {
     } else if (action is FlushAction) {
       _file.flush();
       sendEvent(FlushedEvent(action.uuid));
+    } else if (action is CloseAction) {
+      print('Closing the file properly.');
+      _file.close();
+      dispose();
     }
   }
 

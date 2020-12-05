@@ -17,6 +17,8 @@ class FlushAction extends Action {
   final String uuid;
 }
 
+class CloseAction extends Action {}
+
 abstract class Event {}
 
 class WholeValueEvent extends Event {
