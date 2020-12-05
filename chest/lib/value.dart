@@ -10,6 +10,8 @@ class Path<T> {
   final List<T> keys;
   bool get isRoot => keys.isEmpty;
 
+  int get length => keys.length;
+
   Path<T> withoutFirst() => Path(keys.skip(1).toList());
   bool startsWith(Block other) => !isRoot && keys.first == other;
   Path<Block> serialize() {
