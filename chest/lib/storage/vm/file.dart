@@ -22,10 +22,13 @@ class SyncFile {
   late Uint8List _intList;
 
   int length() => _file.lengthSync();
+  void truncate(int length) => _file.truncateSync(length);
   void clear() {
-    _file.truncateSync(0);
+    truncate(0);
     goToStart();
   }
+
+  int position() => _file.positionSync();
 
   void flush() => _file.flushSync();
 
