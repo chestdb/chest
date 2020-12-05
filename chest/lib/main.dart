@@ -17,12 +17,18 @@ void main() async {
 
   /// Chests are a storage for global, persisted variables.
   print('Main: Opening foo chest');
-  final foo = await Chest.open<String>('🌮', ifNew: () => '0');
+  final foo = await Chest.open<User>(
+    '🌮',
+    ifNew: () => User('Marcel', Pet('0')),
+  );
   print('Main: foo is ${foo.value}');
   for (var i = 0; i < 2; i++) {
     await Future.delayed(Duration(seconds: 2));
-    foo.value = '${int.parse(foo.value) + 1}';
-    print('Main: foo is ${foo.value}');
+    // Increase Pet's name
+    final petName = foo.pet.name.get();
+    print('Main: pet name is $petName');
+    foo.pet.name.set('${int.parse(petName) + 1}');
+    print('Main: pet name updated to ${foo.pet.name.get()}');
   }
   await foo.close();
 }
