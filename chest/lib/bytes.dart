@@ -44,6 +44,7 @@ const blockKindBytes = 1;
 
 extension BlockToBytes on Block {
   Uint8List toBytes() {
+    // TODO: Don't hardcode the length.
     final data = Data(ByteData(1024));
     // TODO: Make this a set and use the contains method as soon as hashCode is overridden.
     final registry = <BlockView>[];
