@@ -69,11 +69,11 @@ class _TaperForString extends BytesTaper<String> {
   String fromBytes(List<int> bytes) => utf8.decode(bytes);
 }
 
+// User
+
 extension TaperForUser on TaperApi {
   Taper<User> forUser() => _TaperForUser();
 }
-
-// User
 
 class _TaperForUser extends ClassTaper<User> {
   String get name => 'User';
