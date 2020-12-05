@@ -76,7 +76,7 @@ class VmStorage implements Storage {
     return event.value;
   }
 
-  void setValue(Path path, Block value) {
+  void setValue(Path<Block> path, Block value) {
     sendAction(SetValueAction(path: path, value: value));
   }
 

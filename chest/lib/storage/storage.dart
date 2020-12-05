@@ -11,7 +11,7 @@ abstract class Storage {
   /// Gets the value. Used at startup.
   Future<Value?> getValue();
 
-  void setValue(Path path, Block value);
+  void setValue(Path<Block> path, Block value);
 
   Future<void> flush();
   Future<void> close();

@@ -7,7 +7,7 @@ class GetValueAction extends Action {}
 class SetValueAction extends Action {
   SetValueAction({required this.path, required this.value});
 
-  final Path path;
+  final Path<Block> path;
   final Block value;
 }
 
