@@ -23,7 +23,7 @@ class Chest<T> implements Ref<T> {
     if (initialValue == null) {
       final newValue = (await ifNew()).toBlock();
       storage.setValue(Path.root(), newValue);
-      initialValue = newValue;
+      initialValue = Value(newValue);
     }
     return Chest._(
       name: name,
@@ -35,9 +35,9 @@ class Chest<T> implements Ref<T> {
   Chest._({
     required this.name,
     required Storage storage,
-    required Block initialValue,
+    required Value initialValue,
   })   : _storage = storage,
-        _value = Value(initialValue) {
+        _value = initialValue {
     _storage.updates.listen((delta) => _value.update(delta));
   }
 

@@ -9,7 +9,7 @@ abstract class Storage {
   Stream<Delta> get updates;
 
   /// Gets the value. Used at startup.
-  Future<Block?> getValue();
+  Future<Value?> getValue();
 
   void setValue(Path path, Block value);
 

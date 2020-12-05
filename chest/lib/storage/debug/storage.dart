@@ -12,7 +12,7 @@ class DebugStorage implements Storage {
   @override
   Stream<Delta> get updates => updatesController.stream;
 
-  Future<Block?> getValue() async {
+  Future<Value?> getValue() async {
     return null;
   }
 
