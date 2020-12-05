@@ -16,6 +16,8 @@ class Path<T> {
     return Path(keys.map((it) => it.toBlock()).toList());
   }
 
+  @override
+  String toString() => isRoot ? '<root>' : keys.join('/');
 }
 
 /// The in-memory representation of a value. It's partially updatable.
