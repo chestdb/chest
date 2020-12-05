@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
+import 'bytes.dart';
 import 'registry.dart';
+import 'utils.dart';
 
 /// An intermediary format that is well-understood, has value semantics, and is
 /// guaranteed to be transferrable between [Isolate]s.
@@ -23,17 +27,27 @@ abstract class Block implements Comparable<Block> {
 abstract class MapBlock extends Block {
   const MapBlock();
 
-  Map<Block, Block> get map;
+  Block? operator [](Block key);
+  operator []=(Block key, Block value);
+  List<MapEntry<Block, Block>> get entries;
+
+  MapBlock copyWith(Map<Block, Block> changes) {
+    final entries = this.entries.toMap();
+    for (final entry in changes.entries) {
+      entries[entry.key] = entry.value;
+    }
+    return DefaultMapBlock(typeCode, entries);
+  }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! MapBlock) return false;
     if (typeCode != other.typeCode) return false;
-    final entries = map.entries.toList();
-    final otherEntries = other.map.entries.toList();
+    final entries = this.entries;
+    final otherEntries = other.entries;
     if (entries.length != otherEntries.length) return false;
-    for (var i = 0; i < map.length; i++) {
+    for (var i = 0; i < entries.length; i++) {
       if (entries[i] != otherEntries[i]) return false;
     }
     return true;
@@ -50,13 +64,13 @@ abstract class MapBlock extends Block {
 
     if (other is! MapBlock) return -1;
 
-    final entries = map.entries.toList();
-    final otherEntries = other.map.entries.toList();
+    final entries = this.entries;
+    final otherEntries = other.entries;
 
-    result = map.length.compareTo(otherEntries.length);
+    result = entries.length.compareTo(otherEntries.length);
     if (result != 0) return result;
 
-    for (var i = 0; i < map.length; i++) {
+    for (var i = 0; i < entries.length; i++) {
       final entry = entries[i];
       final otherEntry = otherEntries[i];
 
@@ -73,7 +87,7 @@ abstract class MapBlock extends Block {
   @override
   String toString([int indentation = 0]) {
     final buffer = StringBuffer()..writeln('MapBlock($typeCode, {');
-    for (final entry in map.entries) {
+    for (final entry in entries) {
       buffer
         ..write(' ' * (indentation + 1))
         ..write(entry.key.toString(indentation + 1))
@@ -144,6 +158,10 @@ class DefaultMapBlock extends MapBlock {
 
   final int typeCode;
   final Map<Block, Block> map;
+
+  Block? operator [](Block key) => map[key];
+  operator []=(Block key, Block value) => map[key] = value;
+  List<MapEntry<Block, Block>> get entries => map.entries.toList();
 }
 
 class DefaultBytesBlock extends BytesBlock {
@@ -151,6 +169,90 @@ class DefaultBytesBlock extends BytesBlock {
 
   final int typeCode;
   final List<int> bytes;
+}
+
+abstract class BlockView implements Block {
+  int get offset;
+
+  static BlockView at(Data data, int offset) {
+    final blockKind = data.getBlockKind(offset + 8);
+    if (blockKind == blockKindMap) {
+      return MapBlockView(data, offset);
+    } else if (blockKind == blockKindBytes) {
+      return BytesBlockView(data, offset);
+    } else {
+      throw 'Unknown block kind $blockKind.';
+    }
+  }
+}
+
+// Lazy block implementations that looks up data in a [_Data].
+
+class MapBlockView extends MapBlock implements BlockView {
+  MapBlockView(this.data, this.offset);
+
+  final Data data;
+  final int offset;
+
+  @override
+  int get typeCode => data.getTypeCode(offset);
+
+  int get length => data.getLength(offset + 8 + 1);
+
+  Block? operator [](Block key) {
+    final index = _getIndexOfKey(key);
+    if (index == null) return null;
+    return _getValueAt(index);
+  }
+
+  operator []=(Block key, Block value) =>
+      (throw "Can't assign to MapBlockView.");
+
+  List<MapEntry<BlockView, BlockView>> get entries {
+    final length = this.length;
+    return <MapEntry<BlockView, BlockView>>[
+      for (var i = 0; i < length; i++) MapEntry(_getKeyAt(i), _getValueAt(i)),
+    ];
+  }
+
+  int? _getIndexOfKey(Block key) {
+    var left = 0;
+    var right = length;
+    while (left < right) {
+      final middleIndex = (left + right) ~/ 2;
+      final middleBlock = _getKeyAt(middleIndex);
+      final comparison = middleBlock.compareTo(key);
+      if (comparison == 0) {
+        return middleIndex;
+      } else if (comparison < 0) {
+        left = middleIndex + 1;
+      } else {
+        right = middleIndex;
+      }
+    }
+    return null;
+  }
+
+  BlockView _getKeyAt(int index) =>
+      BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * index));
+  BlockView _getValueAt(int index) =>
+      BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * index + 8));
+}
+
+class BytesBlockView extends BytesBlock implements BlockView {
+  BytesBlockView(this.data, this.offset);
+
+  final Data data;
+  final int offset;
+
+  @override
+  int get typeCode => data.getTypeCode(offset);
+
+  @override
+  List<int> get bytes {
+    final length = data.getLength(offset + 8 + 1);
+    return Uint8List.view(data.data.buffer, offset + 8 + 1 + 8, length);
+  }
 }
 
 // Conversion methods between objects and [Block]s.
@@ -171,6 +273,7 @@ extension BlockToObject on Block {
     if (taper == null) {
       throw 'No taper found for type code $typeCode.';
     }
+    print('Decoding block to object. Taper: $taper');
     return taper.fromBlock(this);
   }
 }

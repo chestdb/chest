@@ -1,6 +1,5 @@
-import 'package:chest/tape/registry.dart';
-
 import 'blocks.dart';
+import 'registry.dart';
 
 /// A converter between [Object]s and [Block]s.
 abstract class Taper<T> {
@@ -34,7 +33,7 @@ abstract class ClassTaper<T> extends Taper<T> {
     if (block is! MapBlock) {
       throw 'Expected MapBlock, got ${block.runtimeType}';
     }
-    final fieldsAsBlocks = block.map.entries.toList();
+    final fieldsAsBlocks = block.entries.toList();
     final fields = <String, Object>{};
     for (final field in fieldsAsBlocks) {
       final key = field.key.toObject();
@@ -91,4 +90,6 @@ class TapeApi {
   void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
     registry.register(typeCodesToTapers);
   }
+
+  bool get isInitialized => registry.hasTapers;
 }

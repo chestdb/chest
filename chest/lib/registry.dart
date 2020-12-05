@@ -1,6 +1,6 @@
 import 'tapers.dart';
 
-import '../utils.dart';
+import 'utils.dart';
 
 void debugPrint(Object object) {
   // ignore: avoid_print
@@ -29,6 +29,7 @@ class Registry {
 
   final _tapersToTypeCodes = <Taper<dynamic>, int>{};
   final _typeCodesToTapers = <int, Taper<dynamic>>{};
+  bool get hasTapers => _tapersToTypeCodes.isNotEmpty;
 
   /// A tree recreating Dart's type system. Given an object, we can walk down
   /// the tree at those nodes where the object matches the type. When we reach a

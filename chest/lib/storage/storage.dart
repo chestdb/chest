@@ -1,33 +1,18 @@
-import '../chest.dart';
+import '../blocks.dart';
+import '../value.dart';
+
+export '../blocks.dart';
+export '../value.dart';
 
 abstract class Storage {
-  Stream<Event> get events;
-  void run(Action action);
+  /// A stream of updates.
+  Stream<Delta> get updates;
+
+  /// Gets the value. Used at startup.
+  Future<Block?> getValue();
+
+  void setValue(Path path, Block value);
+
+  Future<void> flush();
+  Future<void> close();
 }
-
-// Events.
-
-class Event {}
-
-class ValueUpdateEvent extends Event {
-  ValueUpdateEvent(this.value);
-
-  final List<int> value;
-}
-
-// Actions.
-
-class Action {}
-
-typedef ActionSender = void Function(Action action);
-
-class SetValueAction extends Action {
-  SetValueAction(this.path, this.value);
-
-  final Path path;
-  final List<int> value;
-}
-
-class FlushAction extends Action {}
-
-class CloseAction extends Action {}

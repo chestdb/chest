@@ -1,33 +1,48 @@
 import 'dart:async';
+import 'dart:convert';
 
 import '../storage.dart';
 
 class DebugStorage implements Storage {
-  DebugStorage() : eventsController = StreamController<Event>.broadcast() {
-    _sendEvents();
+  DebugStorage() : updatesController = StreamController<Delta>.broadcast() {
+    // _sendEvents();
   }
 
-  final StreamController<Event> eventsController;
-
+  final StreamController<Delta> updatesController;
   @override
-  Stream<Event> get events => eventsController.stream;
+  Stream<Delta> get updates => updatesController.stream;
+
+  Future<Block?> getValue() async {
+    return null;
+  }
 
   Future<void> _sendEvents() async {
     await Future.delayed(Duration(milliseconds: 100));
-    eventsController.add(ValueUpdateEvent([1]));
+    updatesController
+        .add(Delta(Path.root(), DefaultBytesBlock(-1, utf8.encode('bar'))));
     await Future.delayed(Duration(milliseconds: 100));
-    eventsController.add(ValueUpdateEvent([2]));
+    updatesController
+        .add(Delta(Path.root(), DefaultBytesBlock(-1, utf8.encode('baz'))));
     await Future.delayed(Duration(milliseconds: 100));
-    eventsController.add(ValueUpdateEvent([3]));
+    updatesController
+        .add(Delta(Path.root(), DefaultBytesBlock(-1, utf8.encode('blub'))));
   }
 
   @override
-  void run(Action action) {
-    if (action is SetValueAction) {
-      print('Setting value to ${action.value}.');
-      eventsController.add(ValueUpdateEvent([action.value as int]));
-    } else {
-      print('Running $action.');
-    }
+  void setValue(path, Block value) {
+    print('Setting value to $value.');
+    updatesController.add(Delta(Path.root(), value));
+  }
+
+  @override
+  Future<void> flush() {
+    // TODO: implement flush
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> close() {
+    // TODO: implement close
+    throw UnimplementedError();
   }
 }

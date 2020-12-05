@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
 import 'blocks.dart';
+import 'utils.dart';
+import 'value.dart';
 
 /// Blocks are encoded like this:
 ///
@@ -37,66 +39,12 @@ import 'blocks.dart';
 /// * Because keys are encoded before values because of cache-locality of the
 ///   binary search.
 
-const _blockKindMap = 0;
-const _blockKindBytes = 1;
-
-abstract class BlockView implements Block {
-  int get offset;
-
-  static BlockView at(_Data data, int offset) {
-    final blockKind = data.getBlockKind(offset + 8);
-    if (blockKind == _blockKindMap) {
-      return MapBlockView(data, offset);
-    } else if (blockKind == _blockKindBytes) {
-      return BytesBlockView(data, offset);
-    } else {
-      throw 'Unknown block kind $blockKind.';
-    }
-  }
-}
-
-class MapBlockView extends MapBlock implements BlockView {
-  MapBlockView(this.data, this.offset);
-
-  final _Data data;
-  final int offset;
-
-  @override
-  int get typeCode => data.getTypeCode(offset);
-
-  int get length => data.getLength(offset + 8 + 1);
-
-  @override
-  Map<BlockView, BlockView> get map {
-    final length = this.length;
-    return <BlockView, BlockView>{
-      for (var i = 0; i < length; i++)
-        BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * i)):
-            BlockView.at(
-                data, data.getPointer(offset + 8 + 1 + 8 + 16 * i + 8)),
-    };
-  }
-}
-
-class BytesBlockView extends BytesBlock implements BlockView {
-  BytesBlockView(this.data, this.offset);
-
-  final _Data data;
-  final int offset;
-
-  @override
-  int get typeCode => data.getTypeCode(offset);
-
-  @override
-  List<int> get bytes {
-    final length = data.getLength(offset + 8 + 1);
-    return Uint8List.view(data.data.buffer, offset + 8 + 1 + 8, length);
-  }
-}
+const blockKindMap = 0;
+const blockKindBytes = 1;
 
 extension BlockToBytes on Block {
   Uint8List toBytes() {
-    final data = _Data(ByteData(1024));
+    final data = Data(ByteData(1024));
     // TODO: Make this a set and use the contains method as soon as hashCode is overridden.
     final registry = <BlockView>[];
 
@@ -105,8 +53,8 @@ extension BlockToBytes on Block {
       final start = data.cursor;
       data.addTypeCode(block.typeCode);
       if (block is MapBlock) {
-        data.addBlockKind(_blockKindMap);
-        final entries = block.map.entries.toList();
+        data.addBlockKind(blockKindMap);
+        final entries = block.entries;
         data.addLength(entries.length);
         final entriesStart = data.cursor;
         data.cursor += 16 * entries.length;
@@ -121,10 +69,8 @@ extension BlockToBytes on Block {
         // Sort entries.
         final sortedMapEntries = BlockView.at(data, start)
             .cast<MapBlockView>()
-            .map
             .entries
-            .toList()
-              ..sort((a, b) => a.key.compareTo(b.key));
+          ..sort((a, b) => a.key.compareTo(b.key));
         for (var i = 0; i < sortedMapEntries.length; i++) {
           final entry = sortedMapEntries[i];
           data
@@ -132,7 +78,7 @@ extension BlockToBytes on Block {
             ..setPointer(start + 8 + 1 + 8 + 16 * i + 8, entry.value.offset);
         }
       } else if (block is BytesBlock) {
-        data.addBlockKind(_blockKindBytes);
+        data.addBlockKind(blockKindBytes);
         final bytes = block.bytes;
         data.addLength(bytes.length);
         bytes.forEach(data.addByte);
@@ -157,51 +103,7 @@ extension BlockToBytes on Block {
 
 extension BytesToBlock on Uint8List {
   Block toBlock() {
-    final data = _Data(ByteData.view(buffer));
+    final data = Data(ByteData.view(buffer));
     return BlockView.at(data, 0);
-  }
-}
-
-/// A wrapper around [ByteData] that only offers useful methods for encoding
-/// [Block]s.
-class _Data {
-  _Data(this.data);
-
-  ByteData data;
-  int cursor = 0;
-
-  void setTypeCode(int offset, int code) => data.setUint64(offset, code);
-  int getTypeCode(int offset) => data.getUint64(offset);
-  void addTypeCode(int code) {
-    setTypeCode(cursor, code);
-    cursor += 8;
-  }
-
-  void setBlockKind(int offset, int kind) => data.setUint8(offset, kind);
-  int getBlockKind(int offset) => data.getUint8(offset);
-  void addBlockKind(int kind) {
-    setBlockKind(cursor, kind);
-    cursor += 1;
-  }
-
-  void setLength(int offset, int length) => data.setUint64(offset, length);
-  int getLength(int offset) => data.getUint64(offset);
-  void addLength(int length) {
-    setLength(cursor, length);
-    cursor += 8;
-  }
-
-  void setPointer(int offset, int pointer) => data.setUint64(offset, pointer);
-  int getPointer(int offset) => data.getUint64(offset);
-  void addPointer(int pointer) {
-    setPointer(cursor, pointer);
-    cursor += 8;
-  }
-
-  void setByte(int offset, int byte) => data.setUint8(offset, byte);
-  int getByte(int offset) => data.getUint8(offset);
-  void addByte(int byte) {
-    setByte(cursor, byte);
-    cursor += 1;
   }
 }

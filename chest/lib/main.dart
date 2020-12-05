@@ -3,10 +3,10 @@
 import 'dart:convert';
 
 import 'chest.dart';
-import 'tape/blocks.dart';
-import 'tape/bytes.dart';
-import 'tape/compress.dart';
-import 'tape/tapers.dart';
+import 'blocks.dart';
+import 'bytes.dart';
+import 'compress.dart';
+import 'tapers.dart';
 
 void main() async {
   tape.register({
@@ -16,14 +16,16 @@ void main() async {
   });
 
   print(User('Marcel', Pet('Katzi')).toBlock().toBytes().compress());
-  // return;
 
   /// Chests are a storage for global, persisted variables.
-  final foo = await Chest.open<int>('🌮', ifNew: () => 0);
-  foo.value = 42;
-  print(foo.value);
+  print('Main: Opening foo chest');
+  final foo = await Chest.open<String>('🌮', ifNew: () => 'foo');
+  print('Main: foo is ${foo.value}');
+  await Future.delayed(Duration(seconds: 2));
+  print('Main: Setting value to bar');
+  foo.value = 'bar';
+  print('Main: foo is ${foo.value}');
   await Future.delayed(Duration(milliseconds: 250));
-  print(foo.value);
 
   // print('The pet is named ${user.pet.name.get()}');
   await foo.close();

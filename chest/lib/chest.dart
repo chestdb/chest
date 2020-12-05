@@ -1,83 +1,69 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'blocks.dart';
 import 'storage/debug/storage.dart';
 import 'storage/storage.dart';
-
-part 'query.dart';
+import 'tapers.dart';
+import 'utils.dart';
+import 'value.dart';
 
 /// A container for a variable that's persisted beyond the app's lifetime.
 class Chest<T> implements Ref<T> {
   static Future<Chest<T>> open<T>(
     String name, {
-    required T Function() ifNew,
+    required FutureOr<T> Function() ifNew,
   }) async {
+    assert(tape.isInitialized);
     // TODO: Conditionally use VmStorage or WebStorage.
     final storage = DebugStorage();
-    final firstUpdate = await storage.events
-        .where((event) => event is ValueUpdateEvent)
-        .cast<ValueUpdateEvent>()
-        .first;
+    print('Initialized storage $storage.');
+    var initialValue = await storage.getValue();
+    print('First update is $initialValue.');
+    if (initialValue == null) {
+      final newValue = (await ifNew()).toBlock();
+      storage.setValue(Path.root(), newValue);
+      initialValue = newValue;
+    }
     return Chest._(
       name: name,
       storage: storage,
-      initialValue: firstUpdate.value,
+      initialValue: initialValue,
     );
   }
 
   Chest._({
     required this.name,
     required Storage storage,
-    required List<int> initialValue,
+    required Block initialValue,
   })   : _storage = storage,
-        _value = initialValue {
-    _storage.events.listen((event) {
-      if (event is ValueUpdateEvent) {
-        print('Value set to $event.');
-        _value = event.value;
-      } else {
-        throw UnimplementedError('Handling of $event not implemented.');
-      }
-    });
+        _value = Value(initialValue) {
+    _storage.updates.listen((delta) => _value.update(delta));
   }
 
   final String name;
+
+  /// A local, dense in-memory representation of the database.
+  final Value _value;
   final Storage _storage;
-  List<int> _value;
 
-  Future<void> flush() async {
-    _storage.run(FlushAction());
-    // TODO: Wait for storage to answer.
-  }
-
-  Future<void> close() async {
-    _storage.run(CloseAction());
-    // TODO: Wait for storage to answer.
-    // TODO: Make this invalid.
-  }
+  Future<void> flush() => _storage.flush();
+  Future<void> close() => _storage.close();
 
   set value(T newValue) {
-    // TODO: Encode new value.
-    _storage.run(SetValueAction(Path([]), [42]));
+    print('Setting value to $newValue.');
+    final block = newValue.toBlock();
+    _value.update(Delta(Path.root(), block));
+    _storage.setValue(Path.root(), block);
   }
 
   T get value => get();
 
   @override
-  T get() => getAt(Path.root);
-
-  R getAt<R>(Path path) {
-    if (path.keys.isEmpty) {
-      return _value.first as R;
-    }
-    throw UnimplementedError();
-  }
+  T get() => getAt(Path.root());
+  R getAt<R>(Path path) => _value.getAt(Path.root()).toObject() as R;
 
   Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
-}
-
-class Path {
-  const Path(this.keys);
-  static const root = Path([]);
-
-  final List<Object?> keys;
 }
 
 /// A reference to an interior part of the same [Chest].
@@ -90,9 +76,10 @@ class _FieldRef<T> implements Ref<T> {
   _FieldRef(this.chest, this.path);
 
   final Chest chest;
-  final Path path;
+  final Path<Object?> path;
 
-  Ref<R> child<R>(Object key) => _FieldRef(chest, Path([...path.keys, key]));
+  Ref<R> child<R>(Object key) =>
+      _FieldRef(chest, Path<Object?>([...path.keys, key]));
   T get() => chest.getAt(path);
 }
 
