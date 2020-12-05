@@ -1,10 +1,6 @@
 import 'dart:convert';
 
 import 'chest.dart';
-import 'blocks.dart';
-import 'bytes.dart';
-import 'compress.dart';
-import 'tapers.dart';
 
 void main() async {
   tape.register({

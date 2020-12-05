@@ -90,4 +90,4 @@ class _FieldRef<T> implements Ref<T> {
   T get() => chest._getAt(path.serialize());
 }
 
-final chests = <String, Chest>{};
+final _chests = <String, Chest>{};
