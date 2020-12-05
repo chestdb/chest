@@ -66,6 +66,8 @@ class VmBackend {
       print('Closing the file properly.');
       _file.close();
       dispose();
+    } else {
+      throw UnimplementedError('Backend: Unknown action $action.');
     }
   }
 
