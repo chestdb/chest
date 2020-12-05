@@ -6,6 +6,7 @@ import 'dart:typed_data';
 /// [ChunkManager].
 class SyncFile {
   SyncFile(String name) {
+    // TODO: Think about while file lock is appropriate.
     _file = File(name).openSync(mode: FileMode.append);
 
     _intData = ByteData(8);
