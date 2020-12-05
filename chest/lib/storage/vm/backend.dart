@@ -2,87 +2,73 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:isolate';
+import 'dart:typed_data';
 
-import 'vm_chest.dart';
+import '../../bytes.dart';
+import '../../utils.dart';
+import '../storage.dart';
+import 'file.dart';
+import 'message.dart';
+import 'storage.dart';
 
-// class VmBackend {
-//   /// Completes as soon as [_chunky] is initialized.
-//   final _initializer = Completer<void>();
-//   SendPort _sendPort;
-//   Chunky _chunky;
+/// The [VmBackend] is responsible for managing access to a `.chest` file.
+///
+/// Multiple [Storage]s of the same chest running on different [Isolate]s all
+/// communicate with the same [VmBackend].
+///
+/// ## File layout
+///
+/// TODO: Support versioning.
+/// TODO: Support delta updates.
+/// TODO: Compress bytes.
+/// | value |
+class VmBackend {
+  VmBackend({
+    required String name,
+    required Stream<Action> incomingActions,
+    required this.sendEvent,
+  }) : _file = SyncFile('$name.chest') {
+    incomingActions.listen(_handleAction);
+    _registerServiceMethods();
+  }
 
-//   Future<void> run(SendPort sendPort, ReceivePort receivePort) async {
-//     _sendPort = sendPort;
-//     receivePort.listen((message) {
-//       final request = message as Request;
-//       final action = {
-//         SetupRequest: () => setup(request),
-//         SetRequest: () => set(request),
-//       }[request.runtimeType];
+  final SyncFile _file;
+  final void Function(Event event) sendEvent;
 
-//       if (action == null) {
-//         print('Backend: Unhandled request type: ${request.runtimeType}');
-//       } else {
-//         action();
-//       }
-//     });
+  Future<void> _handleAction(Action action) async {
+    print('Handling action $action.');
+    if (action is GetValueAction) {
+      Value? value;
 
-//     _registerServiceMethods();
-//   }
+      if (_file.length() == 0) {
+        value = null;
+      } else {
+        final bytes = Uint8List(_file.length());
+        _file.readBytesInto(bytes);
+        print('Read bytes: $bytes');
+        print('As blocks: ${BlockView.of(bytes.buffer)}');
+        value = Value(BlockView.of(bytes.buffer));
+      }
+      sendEvent(WholeValueEvent(value));
+    } else if (action is SetValueAction) {
+      final bytes = action.value.toBytes();
+      _file
+        ..clear()
+        ..writeBytes(bytes);
+      // TODO: Broadcast the value.
+    } else if (action is FlushAction) {
+      _file.flush();
+      sendEvent(FlushedEvent(action.uuid));
+    }
+  }
 
-//   void send(Response response) {
-//     print('<- $response.');
-//     _sendPort.send(response);
-//   }
-
-//   Future<void> setup(SetupRequest request) async {
-//     print('Backend: Setting up.');
-//     _chunky = Chunky('${request.name}.chest');
-
-//     if (_chunky.numberOfChunks == 0) {
-//       await _chunky.transaction((chunky) => chunky.addTyped(ChunkTypes.main));
-//     }
-
-//     _initializer.complete();
-//     send(AckResponse(request));
-//   }
-
-//   /// Returns the position of the [BoxChunk] at the given [path].
-//   Future<int> _box(Transaction chunky, List<Object> path) async {
-//     assert(path.isNotEmpty);
-//     final name = path.removeLast();
-//     final boxes = path.isEmpty
-//         ? (await chunky[0]).parse<MainChunk>().boxes
-//         : _doc(chunky, path).resolve().boxes;
-//     return boxes.find(name);
-//   }
-
-//   /// Returns the doc id of the document at the given [path].
-//   Future<int> _doc(Transaction chunky, List<Object> path) async {
-//     assert(path.isNotEmpty);
-//     final key = path.removeLast();
-//     final box = await _box(chunky, path);
-//     final tree = (await chunky[box]).parse() as PayloadToIntTree;
-//     return tree.find(key);
-//   }
-
-//   Future<void> set(SetRequest request) async {
-//     await _initializer.future;
-//     final path = request.path;
-//     final value = request.value;
-//     print('Backend: Adding $path: $value');
-//     print(zlib.encode(request.value));
-//     send(AckResponse(request));
-//   }
-
-//   void _registerServiceMethods() {
-//     registerExtension('ext.chest.num_chunks', (method, parameters) async {
-//       print("Returning the number of chunks.");
-//       return ServiceExtensionResponse.result(json.encode({
-//         'type': 'size',
-//         'size': _chunky.numberOfChunks,
-//       }));
-//     });
-//   }
-// }
+  void _registerServiceMethods() {
+    // registerExtension('ext.chest.num_chunks', (method, parameters) async {
+    //   print("Returning the number of chunks.");
+    //   return ServiceExtensionResponse.result(json.encode({
+    //     'type': 'size',
+    //     'size': _chunky.numberOfChunks,
+    //   }));
+    // });
+  }
+}
