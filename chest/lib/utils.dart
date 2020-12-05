@@ -6,6 +6,10 @@ extension IterableX<T> on Iterable<T> {
   }
 }
 
+extension StreamWhereType<T> on Stream<T> {
+  Stream<R> whereType<R>() => where((it) => it is R).cast<R>();
+}
+
 extension WhereKeyValue<K, V> on Iterable<MapEntry<K, V>> {
   Iterable<MapEntry<K, V>> whereKeyValue(bool Function(K key, V value) check) {
     return where((entry) => check(entry.key, entry.value));
