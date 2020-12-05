@@ -44,6 +44,7 @@ class VmBackend {
         value = null;
       } else {
         final bytes = Uint8List(_file.length());
+        _file.goToStart();
         _file.readBytesInto(bytes);
         print('Read bytes: $bytes');
         print('As blocks: ${BlockView.of(bytes.buffer)}');
