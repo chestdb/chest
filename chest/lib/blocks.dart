@@ -53,7 +53,8 @@ abstract class MapBlock extends Block {
     return true;
   }
 
-  // TODO: Override hashCode
+  // TODO: Better hashCode.
+  int get hashCode => 0;
 
   @override
   int compareTo(Block other) {
@@ -120,7 +121,8 @@ abstract class BytesBlock extends Block {
     return true;
   }
 
-  // TODO: Override hashCode
+  // TODO: Better hashCode.
+  int get hashCode => 0;
 
   @override
   int compareTo(Block other) {
