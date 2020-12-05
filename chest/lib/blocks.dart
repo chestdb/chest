@@ -174,6 +174,10 @@ class DefaultBytesBlock extends BytesBlock {
 abstract class BlockView implements Block {
   int get offset;
 
+  static BlockView of(ByteBuffer buffer) {
+    return at(Data(ByteData.view(buffer)), 0);
+  }
+
   static BlockView at(Data data, int offset) {
     final blockKind = data.getBlockKind(offset + 8);
     if (blockKind == blockKindMap) {
