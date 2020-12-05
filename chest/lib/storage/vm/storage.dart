@@ -63,8 +63,8 @@ class VmStorage implements Storage {
 
   final String name;
 
-  final _updatesController = StreamController<Delta>.broadcast();
-  Stream<Delta> get updates => _updatesController.stream;
+  final _updatesController = StreamController<Update>.broadcast();
+  Stream<Update> get updates => _updatesController.stream;
 
   final Stream<Event> events;
   final void Function(Action action) sendAction;

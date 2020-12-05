@@ -6,7 +6,7 @@ export '../value.dart';
 
 abstract class Storage {
   /// A stream of updates.
-  Stream<Delta> get updates;
+  Stream<Update> get updates;
 
   /// Gets the value. Used at startup.
   Future<Value?> getValue();
@@ -15,4 +15,11 @@ abstract class Storage {
 
   Future<void> flush();
   Future<void> close();
+}
+
+class Update {
+  Update(this.path, this.value);
+
+  final Path<Block> path;
+  final Block value;
 }

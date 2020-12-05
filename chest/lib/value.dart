@@ -15,17 +15,7 @@ class Path<T> {
   Path<Block> serialize() {
     return Path(keys.map((it) => it.toBlock()).toList());
   }
-}
 
-/// An update for a part of a value.
-class Delta {
-  Delta(this.path, this.value);
-
-  final Path<Block> path;
-  final Block value;
-
-  bool get isForRoot => path.isRoot;
-  Delta withoutFirstPathKey() => Delta(path.withoutFirst(), value);
 }
 
 /// The in-memory representation of a value. It's partially updatable.
@@ -35,17 +25,19 @@ class Value {
   Block _baseValue;
   final _deltas = <Block, Value>{};
 
-  void update(Delta delta) {
-    if (delta.isForRoot) {
-      _baseValue = delta.value;
+  void update(Path<Block> path, Block value) {
+    if (path.isRoot) {
+      _baseValue = value;
       _deltas.clear();
     } else {
-      final firstKey = delta.path.keys.first;
+      final firstKey = path.keys.first;
       _deltas
           // TOOD: Better error handling.
           .putIfAbsent(
-              firstKey, () => Value(_baseValue.cast<MapBlock>()[firstKey]!))
-          .update(delta.withoutFirstPathKey());
+            firstKey,
+            () => Value(_baseValue.cast<MapBlock>()[firstKey]!),
+          )
+          .update(path.withoutFirst(), value);
     }
   }
 
@@ -59,10 +51,19 @@ class Value {
             entry.key: entry.value.getAt(Path.root()),
         });
       }
-    } else {
-      final firstKey = path.keys.first;
-      return _deltas[firstKey]?.getAt(path.withoutFirst()) ??
-          _baseValue.cast<MapBlock>()[firstKey]!;
     }
+    final matchingDelta = _deltas[path.keys.first];
+    if (matchingDelta != null) {
+      return matchingDelta.getAt(path.withoutFirst());
+    }
+    var value = _baseValue;
+    while (!path.isRoot) {
+      value = value.cast<MapBlock>()[path.keys.first] ??
+          (throw 'No key ${path.keys.first} found. Keys: '
+              '${_baseValue.cast<MapBlock>().entries.map((it) => it.key).toSet().union(_deltas.keys.toSet())}');
+      path = path.withoutFirst();
+    }
+    print('Found value: $value');
+    return value;
   }
 }

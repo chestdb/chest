@@ -39,7 +39,8 @@ class Chest<T> implements Ref<T> {
     required Value initialValue,
   })   : _storage = storage,
         _value = initialValue {
-    _storage.updates.listen((delta) => _value.update(delta));
+    _storage.updates
+        .listen((update) => _value.update(update.path, update.value));
   }
 
   final String name;
@@ -51,18 +52,23 @@ class Chest<T> implements Ref<T> {
   Future<void> flush() => _storage.flush();
   Future<void> close() => _storage.close();
 
-  set value(T newValue) {
-    print('Setting value to $newValue.');
-    final block = newValue.toBlock();
-    _value.update(Delta(Path.root(), block));
-    _storage.setValue(Path.root(), block);
-  }
-
-  T get value => get();
+  // Value setters.
 
   @override
-  T get() => getAt(Path.root());
-  R getAt<R>(Path path) => _value.getAt(Path.root()).toObject() as R;
+  void set(T value) => _setAt(Path.root(), value.toBlock());
+  void _setAt(Path<Block> path, Block value) {
+    _value.update(path, value);
+    _storage.setValue(path, value);
+  }
+
+  set value(T value) => set(value);
+
+  // Value getters.
+
+  @override
+  T get() => _getAt(Path.root());
+  R _getAt<R>(Path<Block> path) => _value.getAt(path).toObject() as R;
+  T get value => get();
 
   Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
 }
@@ -70,6 +76,7 @@ class Chest<T> implements Ref<T> {
 /// A reference to an interior part of the same [Chest].
 abstract class Ref<T> {
   Ref<R> child<R>(Object key);
+  void set(T value);
   T get();
 }
 
@@ -81,7 +88,9 @@ class _FieldRef<T> implements Ref<T> {
 
   Ref<R> child<R>(Object key) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]));
-  T get() => chest.getAt(path);
+
+  void set(T value) => chest._setAt(path.serialize(), value.toBlock());
+  T get() => chest._getAt(path.serialize());
 }
 
 final chests = <String, Chest>{};
