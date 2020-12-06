@@ -36,11 +36,20 @@ Chest allows you to only change part of a value, even if the class is immutable.
 ```dart
 var me = await Chest.open('me', ifNew: () => User());
 me.value; // Decodes the whole user.
-me.pet.value; // Faster. Only decodes the pet.
+me.pet.value; // Only decodes the pet.
 me.pet.favoriteFood.color.value = Color.red; // Only changes the color.
 ```
 
-Those `.value` getters and setters are generated automatically.
+The critical thing is that `me` is not a `User`, but a reference to a user – a `Ref<User>`.
+Only when you use the `.value` getters and setters, you actually decode and change a subtree of the data.
+
+This is especially handy if dealing with large maps:
+
+```dart
+var users = await Chest.open<Map<String, User>>('users', ifNew: () => {});
+var marcel = users['marcel'].value; // Only decodes Marcel.
+users['jonas'].value = User(...); // Only saves Jonas.
+```
 
 **Wait a minute. How does Chest know how to serialize my types?**
 Chest comes with its own encoding called *tape*. For built-in types, it already comes prepacked with lots of tapers (serializers for objects).
@@ -55,16 +64,6 @@ class Fruit {
 ```
 
 <!-- Tapers for types from other packages are also available to plug and play – for example, for tuple, Flutter, and TODO. -->
-
-
-<!-- **But I need collections!**
-Fine. In fact, `Chest` offers a type – `ChestMap` – that's designed just for this purpose.
-You can use it for storing data:
-
-```dart
-var bar = await Chest.open<ChestMap<String, User>>('users', ifNew: () => {});
-var marcel = bar['marcel'].value; // Only decodes Marcel.
-``` -->
 
 <!-- **In like it's going to eat an awful lot of RAM.**
 True. If your app stores homungous amounts of data, Chest is probably not the right fit for you.
@@ -107,8 +106,6 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 - [ ] Support references
 - [ ] Support lazy chests
 - [ ] Properly handle opening a chest on multiple isolates
-- [ ] Write `ChestMap`
-- [ ] Write `ChestList`
 - [ ] Support transactions (?)
 - [ ] Add cycle detection
   - [ ] during serialization
