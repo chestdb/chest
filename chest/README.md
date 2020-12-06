@@ -101,7 +101,7 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 - [x] Support saving to and reading from chests
 - [x] Support updating parts of chests
 - [x] Support watching (parts of) chests
-- [ ] Properly handle multiple opens of the same Chest
+- [x] Properly handle multiple opens of the same Chest
 - [ ] Implement compaction
 - [ ] Support references
 - [ ] Support lazy chests

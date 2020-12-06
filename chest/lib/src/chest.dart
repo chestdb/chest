@@ -13,6 +13,13 @@ class Chest<T> implements Ref<T> {
     required FutureOr<T> Function() ifNew,
   }) async {
     assert(tape.isInitialized);
+    if (_chests.containsKey(name)) {
+      final chest = _chests[name]!;
+      if (chest is! Chest<T>) {
+        throw 'Chest with name $name is already opened and not of type $T.';
+      }
+      return chest;
+    }
     // TODO: Conditionally use VmStorage or WebStorage.
     final storage = await VmStorage.open(name); // DebugStorage
     print('Initialized storage $storage.');
@@ -23,11 +30,13 @@ class Chest<T> implements Ref<T> {
       storage.setValue(Path.root(), newValue);
       initialValue = Value(newValue);
     }
-    return Chest._(
+    final chest = Chest<T>._(
       name: name,
       storage: storage,
       initialValue: initialValue,
     );
+    _chests[name] = chest;
+    return chest;
   }
 
   Chest._({
