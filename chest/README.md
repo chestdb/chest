@@ -17,26 +17,27 @@ An in-memory database with amazing developer experience.
 ## Chest's philosophy
 
 **What's a database?**
-In its purest form, it's just a place to persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called chests.
+In its purest form, it's just a place to persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called *chests*.
 
 ```dart
 var counter = await Chest.open('counter', ifNew: () => 0);
 print('This program ran ${counter.value} times.');
 counter.value++;
+await counter.close();
 ```
 
 Like regular variables, chest variables are completely type-safe.
 Unlike regular variables, they don't actually exist as real Dart objects until you access their `value`.
 
 **But isn't treating databases like variables inefficient?**
-You don't need to save the whole object every time you make a change.
+Not at all! To be clear, you don't need to save the whole object every time you make a change.
 Chest allows you to only change part of a value, even if the class is immutable.
 
 ```dart
-var me = await Chest.open('me', ifNew: User());
+var me = await Chest.open('me', ifNew: () => User());
 me.value; // Decodes the whole user.
 me.pet.value; // Faster. Only decodes the pet.
-me.pet.favoriteFood.color.value = Color.red; // Only changes the part.
+me.pet.favoriteFood.color.value = Color.red; // Only changes the color.
 ```
 
 Those `.value` getters and setters are generated automatically.
@@ -99,14 +100,19 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 
 - [x] Support saving to and reading from chests
 - [x] Support updating parts of chests
-- [ ] Support watching (parts of) chests
-- [ ] Support transactions
+- [x] Support watching (parts of) chests
+- [ ] Properly handle multiple opens of the same Chest
+- [ ] Implement compaction
 - [ ] Support references
+- [ ] Support lazy chests
 - [ ] Revisit value access syntax
+- [ ] Properly handle opening a chest on multiple isolates
 - [ ] Write `ChestMap`
 - [ ] Write `ChestList`
-- [ ] Write `ChestSet`
+- [ ] Support transactions (?)
 - [ ] Add cycle detection
+  - [ ] during serialization
+  - [ ] during deserialization
 - [ ] Handle errors gracefully
 - [ ] Write tapers for various common types
   - [ ] dart:core
@@ -120,20 +126,20 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 - [ ] Document the tape format
 - [ ] Document the file format
 - [ ] Benchmark
-  - [ ] Write performance suite.
+  - [ ] Write performance suite
   - [ ] Compare with other databases:
     - [ ] Hive & Lazy Hive
     - [ ] Sembast
     - [ ] SQLite
     - [ ] Shared Preferences
 - [ ] Create ChestTools, a web interface for debugging Chest databases
+  - [ ] Event stream
   - [ ] Data
     - [ ] See available chests
     - [ ] See chests' contents
     - [ ] See live updates of the content
     - [ ] Edit content
     - [ ] Clear chests
-    - [ ] Change stream
   - [ ] Performance
     - [ ] Startup
     - [ ] Decoding statistics

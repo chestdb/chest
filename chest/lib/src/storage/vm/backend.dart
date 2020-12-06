@@ -47,7 +47,6 @@ class VmBackend {
   final void Function() dispose;
 
   Future<void> _handleAction(Action action) async {
-    print('Handling action $action.');
     if (action is GetValueAction) {
       sendEvent(WholeValueEvent(_getValue()));
     } else if (action is SetValueAction) {
@@ -138,7 +137,6 @@ class VmBackend {
   }
 
   void _close() {
-    print('Closing the file properly.');
     _file.close();
     dispose();
   }

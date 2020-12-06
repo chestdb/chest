@@ -36,8 +36,10 @@ class Chest<T> implements Ref<T> {
     required Value initialValue,
   })   : _storage = storage,
         _value = initialValue {
-    _storage.updates
-        .listen((update) => _value.update(update.path, update.value));
+    _storage.updates.listen((update) {
+      _value.update(update.path, update.value);
+      _valueChangedController.add(null);
+    });
   }
 
   final String name;
@@ -46,8 +48,18 @@ class Chest<T> implements Ref<T> {
   final Value _value;
   final Storage _storage;
 
+  /// A stream that emits an event every time the value changes.
+  final _valueChangedController = StreamController<void>.broadcast();
+  Stream<void> get _valueChanged => _valueChangedController.stream;
+
   Future<void> flush() => _storage.flush();
-  Future<void> close() => _storage.close();
+  Future<void> close() async {
+    // TODO: Dispose value.
+    _valueChangedController.close();
+    await _storage.close();
+  }
+
+  Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
 
   // Value setters.
 
@@ -55,6 +67,7 @@ class Chest<T> implements Ref<T> {
   void set(T value) => _setAt(Path.root(), value.toBlock());
   void _setAt(Path<Block> path, Block value) {
     _value.update(path, value);
+    _valueChangedController.add(null);
     _storage.setValue(path, value);
   }
 
@@ -67,7 +80,12 @@ class Chest<T> implements Ref<T> {
   R _getAt<R>(Path<Block> path) => _value.getAt(path).toObject() as R;
   T get value => get();
 
-  Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
+  // Watching.
+
+  Stream<T> watch() => _watchAt(Path.root());
+  Stream<R> _watchAt<R>(Path<Block> path) {
+    return _valueChanged.map((_) => _getAt<R>(path)).distinct();
+  }
 }
 
 /// A reference to an interior part of the same [Chest].
@@ -75,6 +93,7 @@ abstract class Ref<T> {
   Ref<R> child<R>(Object key);
   void set(T value);
   T get();
+  Stream<T> watch();
 }
 
 class _FieldRef<T> implements Ref<T> {
@@ -88,6 +107,7 @@ class _FieldRef<T> implements Ref<T> {
 
   void set(T value) => chest._setAt(path.serialize(), value.toBlock());
   T get() => chest._getAt(path.serialize());
+  Stream<T> watch() => chest._watchAt(path.serialize());
 }
 
 final _chests = <String, Chest>{};

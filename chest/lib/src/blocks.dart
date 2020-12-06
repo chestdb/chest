@@ -279,7 +279,6 @@ extension BlockToObject on Block {
     if (taper == null) {
       throw 'No taper found for type code $typeCode.';
     }
-    print('Decoding block to object. Taper: $taper');
     return taper.fromBlock(this);
   }
 }
