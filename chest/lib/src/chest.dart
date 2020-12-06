@@ -68,29 +68,22 @@ class Chest<T> implements Ref<T> {
     await _storage.close();
   }
 
+  @override
   Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
 
-  // Value setters.
-
   @override
-  void set(T value) => _setAt(Path.root(), value.toBlock());
+  set value(T value) => _setAt(Path.root(), value.toBlock());
   void _setAt(Path<Block> path, Block value) {
     _value.update(path, value);
     _valueChangedController.add(null);
     _storage.setValue(path, value);
   }
 
-  set value(T value) => set(value);
-
-  // Value getters.
+  @override
+  T get value => _getAt(Path.root());
+  R _getAt<R>(Path<Block> path) => _value.getAt(path).toObject() as R;
 
   @override
-  T get() => _getAt(Path.root());
-  R _getAt<R>(Path<Block> path) => _value.getAt(path).toObject() as R;
-  T get value => get();
-
-  // Watching.
-
   Stream<T> watch() => _watchAt(Path.root());
   Stream<R> _watchAt<R>(Path<Block> path) {
     return _valueChanged.map((_) => _getAt<R>(path)).distinct();
@@ -100,8 +93,8 @@ class Chest<T> implements Ref<T> {
 /// A reference to an interior part of the same [Chest].
 abstract class Ref<T> {
   Ref<R> child<R>(Object key);
-  void set(T value);
-  T get();
+  set value(T value);
+  T get value;
   Stream<T> watch();
 }
 
@@ -114,8 +107,8 @@ class _FieldRef<T> implements Ref<T> {
   Ref<R> child<R>(Object key) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]));
 
-  void set(T value) => chest._setAt(path.serialize(), value.toBlock());
-  T get() => chest._getAt(path.serialize());
+  set value(T value) => chest._setAt(path.serialize(), value.toBlock());
+  T get value => chest._getAt(path.serialize());
   Stream<T> watch() => chest._watchAt(path.serialize());
 }
 

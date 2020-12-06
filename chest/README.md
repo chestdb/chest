@@ -102,10 +102,10 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 - [x] Support updating parts of chests
 - [x] Support watching (parts of) chests
 - [x] Properly handle multiple opens of the same Chest
+- [x] Revisit value access syntax
 - [ ] Implement compaction
 - [ ] Support references
 - [ ] Support lazy chests
-- [ ] Revisit value access syntax
 - [ ] Properly handle opening a chest on multiple isolates
 - [ ] Write `ChestMap`
 - [ ] Write `ChestList`

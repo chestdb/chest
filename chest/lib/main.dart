@@ -21,8 +21,8 @@ void main() async {
   for (var i = 0; i < 2; i++) {
     await Future.delayed(Duration(seconds: 2));
     // Increase Pet's name
-    final petName = foo.pet.name.get();
-    foo.pet.name.set('${int.parse(petName) + 1}');
+    final petName = foo.pet.name.value;
+    foo.pet.name.value = '${int.parse(petName) + 1}';
   }
   await foo.close();
 }
