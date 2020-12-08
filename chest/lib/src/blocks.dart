@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'bytes.dart';
 import 'registry.dart';
+import 'tapers.dart';
 import 'utils.dart';
 
 /// An intermediary format that is well-understood, has value semantics, and is
@@ -269,7 +270,18 @@ extension ObjectToBlock on Object? {
     if (taper == null) {
       throw 'No taper found for type $runtimeType.';
     }
-    return taper.toBlock(this);
+    final typeCode = registry.taperToTypeCode(taper)!;
+    final data = taper.toData(this);
+    if (data is MapBlockData) {
+      return DefaultMapBlock(
+        typeCode,
+        data.map.map((key, value) => MapEntry(key.toBlock(), value.toBlock())),
+      );
+    } else if (data is BytesBlockData) {
+      return DefaultBytesBlock(typeCode, data.bytes);
+    } else {
+      throw 'Tapers should always return either a MapBlockData or BytesBlockData';
+    }
   }
 }
 
@@ -279,6 +291,15 @@ extension BlockToObject on Block {
     if (taper == null) {
       throw 'No taper found for type code $typeCode.';
     }
-    return taper.fromBlock(this);
+    BlockData data;
+    Block this_ = this;
+    if (this_ is MapBlock) {
+      data = MapBlockData(this_.entries.toMap());
+    } else if (this_ is BytesBlock) {
+      data = BytesBlockData(this_.bytes);
+    } else {
+      throw 'Expected MapBlock or BytesBlock, but this is a $runtimeType.';
+    }
+    return taper.fromData(data);
   }
 }

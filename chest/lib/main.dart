@@ -76,24 +76,16 @@ extension TaperForUser on TaperApi {
 }
 
 class _TaperForUser extends ClassTaper<User> {
-  String get name => 'User';
-
   Map<String, Object> toFields(User value) {
-    return {
-      'name': value.name,
-      'pet': value.pet,
-    };
+    return {'name': value.name, 'pet': value.pet};
   }
 
-  User fromFields(Map<String, Object> fields) {
-    return User(
-      fields['name'] as String,
-      fields['pet'] as Pet,
-    );
+  User fromFields(Map<String, Object?> fields) {
+    return User(fields['name'] as String, fields['pet'] as Pet);
   }
 }
 
-extension UserRefs on Ref<User> {
+extension ChildrenOfUser on Ref<User> {
   Ref<String> get name => child('name');
   Ref<int> get age => child('age');
   Ref<Pet> get pet => child('pet');
@@ -106,21 +98,15 @@ extension TaperForPet on TaperApi {
 }
 
 class _TaperForPet extends ClassTaper<Pet> {
-  String get name => 'Pet';
-
   Map<String, Object> toFields(Pet value) {
-    return {
-      'name': value.name,
-    };
+    return {'name': value.name};
   }
 
-  Pet fromFields(Map<String, Object> fields) {
-    return Pet(
-      fields['name'] as String,
-    );
+  Pet fromFields(Map<String, Object?> fields) {
+    return Pet(fields['name'] as String);
   }
 }
 
-extension PetRefs on Ref<Pet> {
+extension ChildrenOfPet on Ref<Pet> {
   Ref<String> get name => child('name');
 }

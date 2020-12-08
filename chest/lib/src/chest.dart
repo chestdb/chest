@@ -22,9 +22,7 @@ class Chest<T> implements Ref<T> {
     }
     // TODO: Conditionally use VmStorage or WebStorage.
     final storage = await VmStorage.open(name); // DebugStorage
-    print('Initialized storage $storage.');
     var initialValue = await storage.getValue();
-    print('First update is $initialValue.');
     if (initialValue == null) {
       final newValue = (await ifNew()).toBlock();
       storage.setValue(Path.root(), newValue);
@@ -69,7 +67,7 @@ class Chest<T> implements Ref<T> {
   }
 
   @override
-  Ref<R> child<R>(Object key) => _FieldRef<R>(this, Path([key]));
+  Ref<R> child<R>(Object? key) => _FieldRef<R>(this, Path([key]));
 
   @override
   set value(T value) => _setAt(Path.root(), value.toBlock());
@@ -92,7 +90,7 @@ class Chest<T> implements Ref<T> {
 
 /// A reference to an interior part of the same [Chest].
 abstract class Ref<T> {
-  Ref<R> child<R>(Object key);
+  Ref<R> child<R>(Object? key);
   set value(T value);
   T get value;
   Stream<T> watch();
@@ -104,7 +102,7 @@ class _FieldRef<T> implements Ref<T> {
   final Chest chest;
   final Path<Object?> path;
 
-  Ref<R> child<R>(Object key) =>
+  Ref<R> child<R>(Object? key) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]));
 
   set value(T value) => chest._setAt(path.serialize(), value.toBlock());

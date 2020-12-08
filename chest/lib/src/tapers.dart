@@ -3,30 +3,81 @@ import 'registry.dart';
 
 /// A converter between [Object]s and [Block]s.
 abstract class Taper<T> {
-  String get name;
+  const Taper();
   Type get type => T;
 
   void registerForTypeCode(int typeCode) =>
       registry.registerSingle(typeCode, this);
 
-  Block toBlock(T value);
-  T fromBlock(Block block);
+  /// Turns the [value] into [BlockData].
+  BlockData toData(T value);
+
+  /// Creates the [T] from [BlockData].
+  T fromData(BlockData data);
 }
 
-/// A [Taper] that turns an object into a map. Especially useful for classes.
-abstract class ClassTaper<T> extends Taper<T> {
-  Map<String, Object> toFields(T value);
-  T fromFields(Map<String, Object> fields);
+abstract class BlockData {}
 
-  Block toBlock(T value) {
-    final fields = toFields(value).entries.toList();
-    final typeCode = registry.taperToTypeCode(this);
-    if (typeCode == null) {
-      throw 'This taper is not registered: $this';
+class MapBlockData extends BlockData {
+  MapBlockData(this.map);
+  final Map<Object?, Object?> map;
+}
+
+class BytesBlockData extends BlockData {
+  BytesBlockData(this.bytes);
+  final List<int> bytes;
+}
+
+/// A [Taper] that turns an object into bytes.
+abstract class MapTaper<T> extends Taper<T> {
+  const MapTaper();
+
+  Map<Object?, Object?> toMap(T value);
+  T fromMap(Map<Object?, Object?> fields);
+
+  BlockData toData(T value) {
+    return MapBlockData(toMap(value)
+        .map((key, value) => MapEntry(key.toBlock(), value.toBlock())));
+  }
+
+  T fromData(BlockData data) {
+    if (data is! MapBlockData) {
+      throw 'Expected Map<Object?, Object?>, got ${data.runtimeType}';
     }
-    return DefaultMapBlock(typeCode, {
-      for (final field in fields) field.key.toBlock(): field.value.toBlock(),
-    });
+    return fromMap(data.map);
+  }
+}
+
+/// A [Taper] that turns an object into bytes.
+abstract class BytesTaper<T> extends Taper<T> {
+  const BytesTaper();
+
+  List<int> toBytes(T value);
+  T fromBytes(List<int> bytes);
+
+  BlockData toData(T value) => BytesBlockData(toBytes(value));
+  T fromData(BlockData data) {
+    if (data is! BytesBlockData) {
+      throw 'Expected BytesBlockData, got ${data.runtimeType}';
+    }
+    return fromBytes(data.bytes);
+  }
+}
+
+/// A [Taper] that turns an object into a `Map<String, Object?>`. Especially
+/// useful for classes.
+abstract class ClassTaper<T> extends MapTaper<T> {
+  const ClassTaper();
+
+  Map<String, Object?> toFields(T value);
+  T fromFields(Map<String, Object?> fields);
+
+  Map<Object?, Object?> toMap(T value) => toFields(value);
+  T fromMap(Map<Object?, Object?> map) {
+    if (map is! Map<String, Object?>) {
+      throw 'Expected class map to have String keys, but type is $map';
+    }
+    return fromFields(map);
   }
 
   T fromBlock(Block block) {
@@ -43,27 +94,6 @@ abstract class ClassTaper<T> extends Taper<T> {
       fields[key] = field.value.toObject();
     }
     return fromFields(fields);
-  }
-}
-
-/// A [Taper] that turns an object into bytes.
-abstract class BytesTaper<T> extends Taper<T> {
-  List<int> toBytes(T value);
-  T fromBytes(List<int> bytes);
-
-  Block toBlock(T value) {
-    final typeCode = registry.taperToTypeCode(this);
-    if (typeCode == null) {
-      throw 'This taper is not registered: $this';
-    }
-    return DefaultBytesBlock(typeCode, toBytes(value));
-  }
-
-  T fromBlock(Block block) {
-    if (block is! BytesBlock) {
-      throw 'Expected BytesBlock, got ${block.runtimeType}';
-    }
-    return fromBytes(block.bytes);
   }
 }
 
