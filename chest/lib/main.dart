@@ -6,10 +6,10 @@ void main() async {
   tape.register({
     ...tapers.forDartCore(),
     0: taper.forUser(),
+    ...tapers.forDartMath(),
+    ...tapers.forDartTypedData(),
     1: taper.forPet(),
   });
-
-  // print(User('Marcel', Pet('Katzi')).toBlock().toBytes().compress());
 
   /// Chests are a storage for global, persisted variables.
   print('Main: Opening foo chest');
@@ -47,27 +47,6 @@ class Pet {
 }
 
 // ================================= generated =================================
-
-extension TapersForDartCore on TapersForPackageApi {
-  Map<int, Taper<dynamic>> forDartCore() {
-    return {
-      -1: taper.forString(),
-    };
-  }
-}
-
-// String
-
-extension TaperForString on TaperApi {
-  Taper<String> forString() => _TaperForString();
-}
-
-class _TaperForString extends BytesTaper<String> {
-  String get name => 'String';
-
-  List<int> toBytes(String value) => utf8.encode(value);
-  String fromBytes(List<int> bytes) => utf8.decode(bytes);
-}
 
 // User
 

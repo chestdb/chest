@@ -1,6 +1,10 @@
 import 'blocks.dart';
 import 'registry.dart';
 
+export 'tapers/core.dart';
+export 'tapers/math.dart';
+export 'tapers/typed_data.dart';
+
 /// A converter between [Object]s and [Block]s.
 abstract class Taper<T> {
   const Taper();
