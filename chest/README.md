@@ -103,25 +103,30 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 - [x] Properly handle multiple opens of the same Chest
 - [x] Revisit value access syntax
 - [ ] Implement compaction
-- [ ] Support references
+- [ ] Support taper migration
+- [ ] Properly handle opening a chest in multiple isolates
+- [ ] Support storing references
 - [ ] Support lazy chests
-- [ ] Properly handle opening a chest on multiple isolates
 - [ ] Support transactions (?)
+- [ ] cross-Isolate adapter registry?
 - [ ] Add cycle detection
   - [ ] during serialization
   - [ ] during deserialization
 - [ ] Handle errors gracefully
 - [ ] Write tapers for various common types
-  - [ ] dart:core
-  - [ ] dart:math
-  - [ ] dart:typed_data
+  - [x] dart:core
+  - [x] dart:math
+  - [x] dart:typed_data
   - [ ] tuple
   - [ ] Flutter
 - [ ] Write docs on how to get started
 - [ ] Write docs on how to write tapers
+- [ ] Write docs on how to migrate tapers
 - [ ] Write docs on how it works in principle
 - [ ] Document the tape format
 - [ ] Document the file format
+- [ ] Write tests
+- [ ] Add CI
 - [ ] Benchmark
   - [ ] Write performance suite
   - [ ] Compare with other databases:
@@ -147,3 +152,6 @@ The backend is responsible for syncing that model across `Isolate`s and with the
     - [ ] Trigger manual compaction
 - [ ] Insert events into the Dart Debugging Timeline
 - [ ] Develop Brand & Logo
+  - [x] Color palette
+  - [x] Font
+  - [ ] Logo
