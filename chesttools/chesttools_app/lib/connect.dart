@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:vm_service/utils.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
@@ -15,16 +16,37 @@ class ConnectPage extends StatefulWidget {
 
 class _ConnectPageState extends State<ConnectPage> {
   final _uriController = TextEditingController();
+  String _message = '';
 
   Future<void> _connect() async {
-    print('Connecting…');
-    final httpUri = _uriController.text;
-    assert(httpUri.startsWith('http://'));
-    assert(httpUri.endsWith('=/'));
+    final text = _uriController.text;
+    String uri;
 
-    // Turn http://127.0.0.1:8181/7GOC9eKQrbA=/
-    // into ws://127.0.0.1:8181/7GOC9eKQrbA=/ws
-    final uri = 'ws://${httpUri.substring('http://'.length)}ws';
+    if (text.isEmpty) {
+      _message = '';
+    } else if (text.startsWith('http://')) {
+      if (text.endsWith('/')) {
+        // Turn http://127.0.0.1:8181/7GOC9eKQrbA=/
+        // into ws://127.0.0.1:8181/7GOC9eKQrbA=/ws
+        uri = 'ws://${text.substring('http://'.length)}ws';
+      } else {
+        _message = 'The URL should end with "/".';
+      }
+    } else if (text.startsWith('ws://')) {
+      if (text.endsWith('/ws')) {
+        uri = text;
+      } else {
+        _message = 'The URL should end with "/ws".';
+      }
+    } else {
+      _message = 'Make sure your URL starts with http:// or ws://.';
+    }
+
+    if (uri != null) {
+      _message = 'Connecting…';
+    }
+    setState(() {});
+    if (uri == null) return;
 
     try {
       service = await vmServiceConnectUri(uri);
@@ -33,6 +55,9 @@ class _ConnectPageState extends State<ConnectPage> {
       print('ERROR: Unable to connect to VMService $uri');
       print(e);
       print(st);
+      setState(() {
+        _message = "Can't connect to this VMService: $e";
+      });
       return null;
     }
     Navigator.of(context).pushReplacementNamed('tools');
@@ -42,36 +67,34 @@ class _ConnectPageState extends State<ConnectPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('Connect to a running app'),
-            Text('Enter a URL to a running Dart or Flutter application that '
-                'uses chest.'),
-            SizedBox(height: 16),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                SizedBox(
-                  width: 400,
-                  child: TextField(
-                    controller: _uriController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'http://127.0.0.1:38500/auth_code',
-                    ),
-                  ),
+        child: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Chest',
+                style: GoogleFonts.rajdhani(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 48,
                 ),
-                SizedBox(width: 16),
-                RaisedButton(
-                  onPressed: _connect,
-                  color: Theme.of(context).primaryColor,
-                  child: Text('Connect'),
+              ),
+              Text('To connect, simply paste a URL to a Dart or Flutter '
+                  'application that is running in debug mode and using Chest.'),
+              SizedBox(height: 16),
+              TextField(
+                controller: _uriController,
+                onChanged: (_) => _connect(),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'http://127.0.0.1:38500/auth_code',
                 ),
-              ],
-            ),
-          ],
+              ),
+              SizedBox(height: 8),
+              Text(_message),
+            ],
+          ),
         ),
       ),
     );
