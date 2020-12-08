@@ -45,6 +45,7 @@ class VmBackend {
   final SyncFile _file;
   final void Function(Event event) sendEvent;
   final void Function() dispose;
+  late int _numberOfUpdates;
 
   Future<void> _handleAction(Action action) async {
     if (action is GetValueAction) {
@@ -70,6 +71,7 @@ class VmBackend {
     if (version > 0) throw 'Version too big: $version.';
 
     Value? value;
+    _numberOfUpdates = 0;
 
     while (_file.position() < _file.length()) {
       final validity = _file.readByte();
@@ -78,6 +80,7 @@ class VmBackend {
         break;
       }
 
+      _numberOfUpdates++;
       final pathLength = _file.readInt();
       final segments = <Block>[];
       for (var i = 0; i < pathLength; i++) {
@@ -130,6 +133,23 @@ class VmBackend {
       ..writeByte(1) // make transaction valid
       ..flush();
     // TODO: Broadcast the value.
+
+    // Decide whether to compact.
+    _file.goTo(8 + 1 + 8);
+    final baseValueSize = _file.readInt();
+    final shouldCompact = _numberOfUpdates / baseValueSize > 0.002;
+    if (shouldCompact) {
+      final name = _file.path;
+      final compacted = _getValue()!.getAt(Path.root()).toBytes();
+      final newFile = SyncFile('$name.compacted');
+      newFile
+        ..writeBytes(compacted)
+        ..flush()
+        ..close();
+      // TODO: Replace the old file.
+      // _file.delete();
+      // newFile.renameTo(name);
+    }
   }
 
   void _flush() {
