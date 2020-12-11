@@ -26,11 +26,8 @@ counter.value++;
 await counter.close();
 ```
 
-Like regular variables, chest variables are completely type-safe.
-Unlike regular variables, they don't actually exist as real Dart objects until you access their `value`.
-
 **But isn't treating databases like variables inefficient?**
-Not at all! To be clear, you don't need to save the whole object every time you make a change.
+Not at all! To be clear, you don't need to read or save the whole object every time you make a change.
 Chest allows you to only change part of a value, even if the class is immutable.
 
 ```dart
@@ -40,10 +37,10 @@ me.pet.value; // Only decodes the pet.
 me.pet.favoriteFood.color.value = Color.red; // Only changes the color.
 ```
 
-The critical thing is that `me` is not a `User`, but a reference to a user – a `Ref<User>`.
-Only when you use the `.value` getters and setters, you actually decode and change a subtree of the data.
+The important thing is that `me` is not a `User`, but a reference to a user – a `Ref<User>`.
+Only when you use the `.value` getters or setters, you actually decode or change a subtree of the data.
 
-This is especially handy if dealing with large maps:
+This is especially handy if you're dealing with large maps:
 
 ```dart
 var users = await Chest.open<Map<String, User>>('users', ifNew: () => {});
@@ -51,8 +48,8 @@ var marcel = users['marcel'].value; // Only decodes Marcel.
 users['jonas'].value = User(...); // Only saves Jonas.
 ```
 
-**Wait a minute. How does Chest know how to serialize my types?**
-Chest comes with its own encoding called *tape*. For built-in types, it already comes prepacked with lots of tapers (serializers for objects).
+**Wait a minute. How does Chest know how to handle my types?**
+Chest comes with its own encoding called *tape*. Built-in types already have prepacked tapers (serializers for objects).
 You can annotate your types with `@tape` and let Chest generate tapers automatically:
 
 ```dart
@@ -72,28 +69,18 @@ Values are only decoded on demand. -->
 
 ## How does it work?
 
-Each `Chest.open` call creates a new `Isolate` that handles all interactions with the file.
-This means that we can use the faster, synchronous I/O operations.
-Also, CPU-heavy tasks like compression don't cause jank in the rest of the app.
-And the debugging tooling can inspect which isolates are opened and communicate with all of them separately, making it easy to debug them.
-Only the necessary data is transferred to the main isolate.
+When you call `Chest.open`, Chest opens the file where the value is stored and loads its content into memory.
+It only loads the raw bytes into memory, so no deserialization is happening yet (although it does freshen the bytes up a bit using on-the-fly-decompression). That means, opening Chests is pretty fast.
 
-Each `Chest.open` call is condensed to one `Chest` instance per `Isolate`. Instances of the same chest – even across multiple `Isolate`s – communicate with the same `ChestBackend`, which is responsible for actually acessing the file.
+The bytes that are stored in memory are optimized for quick deserialization and a low memory footprint – for example, global deduplication makes it possible that for `{'foo': User('Marcel', Pet('cat')), 'bar': User('Jonas', Pet('cat'))}`, the `Pet('cat')` is only saved once.
+This also means that the garbage collector doesn't need to worry about thousands of unused objects cluttering memory (well, it probably does, but Chest doesn't add much to that). To the garbage collector, the content of a chest is just one big object.
 
-```
-+------+ +------+  +------+ +------+
-| open | | open |  | open | | open |
-+----------------+ +----------------+
-| Chest instance | | Chest instance |
-+-----------------------------------+
-| Chest Backend                     |
-+-----------------------------------+
-| Files                             |
-+-----------------------------------+
-```
+When you access parts of a chest using `.value`, only the part of the value is deserialized on-the-fly.
 
-Chest instances carry a whole model of the chest's content.
-The backend is responsible for syncing that model across `Isolate`s and with the file.
+If you change a part, only this update is appended to the end of the file. As more updates accumulate, Chest periodically merges the updates with the existing value.
+Of course, merging and file access happen on another `Isolate` (Dart's version of threads), so they don't impact performance of your main `Isolate`.
+
+By the way: If you open a chest multiple times, the same instance is reused. And if you open it on multiple `Isolate`s, they all communicate with the same backend.
 
 ## TODO before 1.0.0
 
@@ -103,6 +90,7 @@ The backend is responsible for syncing that model across `Isolate`s and with the
 - [x] Properly handle multiple opens of the same Chest
 - [x] Revisit value access syntax
 - [ ] Implement compaction
+- [ ] New tapers with support for generics
 - [ ] Support taper migration
 - [ ] Properly handle opening a chest in multiple isolates
 - [ ] Support storing references

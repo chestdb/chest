@@ -1,67 +1,136 @@
-import 'dart:typed_data';
+import 'package:more/more.dart';
 
-import 'bytes.dart';
-import 'registry.dart';
-import 'tapers.dart';
 import 'utils.dart';
 
-/// An intermediary format that is well-understood, has value semantics, and is
-/// guaranteed to be transferrable between [Isolate]s.
+/// A reference to a type that can be saved in a [Chest].
+///
+/// [ChestType]s correspond to [Type]s in Dart's type system.
+///
+/// [typeCode]s refer to a single named type. For example, while a whole
+/// [ChestType] might correspond to `List<String>`, only `List` and `String`
+/// have [typeCode]s, not `List<String>`.
+abstract class ChestType implements Comparable<ChestType> {
+  factory ChestType(int typeCode, List<ChestType> generics) = _DefaultChestType;
+  const ChestType.noop();
+
+  int get typeCode;
+  List<ChestType> get generics;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChestType &&
+          typeCode == other.typeCode &&
+          generics.deeplyEquals(other.generics);
+
+  @override
+  int get hashCode => hash2(typeCode, generics);
+
+  @override
+  int compareTo(ChestType other) {
+    var result = typeCode.compareTo(other.typeCode);
+    if (result != 0) return result;
+
+    final generics = this.generics;
+    final otherGenerics = other.generics;
+    result = generics.length.compareTo(other.generics.length);
+    if (result != 0) return result;
+
+    for (var i = 0; i < generics.length; i++) {
+      result = generics[i].compareTo(otherGenerics[i]);
+      if (result != 0) return result;
+    }
+
+    return 0;
+  }
+
+  @override
+  String toString() {
+    final buffer = StringBuffer('$typeCode');
+    if (generics.isNotEmpty) {
+      buffer
+        ..write('<')
+        ..writeAll(generics)
+        ..write('>');
+    }
+    return buffer.toString();
+  }
+}
+
+class _DefaultChestType extends ChestType {
+  _DefaultChestType(this.typeCode, this.generics) : super.noop();
+
+  @override
+  final int typeCode;
+
+  @override
+  final List<ChestType> generics;
+}
+
+/// An intermediary format that doesn't contain arbitrary [Object]s anymore, but
+/// rather consists of two simple primitives: `MapBlock`s and `ByteBlock`s.
+///
+/// This is comparable to JSON, where also only a handful of primitives are
+/// allowed (numbers, strings, maps, lists, etc.). The difference is that
+/// [Block]s are more memory efficient and also contain type information.
 abstract class Block implements Comparable<Block> {
   const Block();
 
-  int get typeCode;
+  ChestType get type;
 
-  A cast<A>() {
-    if (this is A) {
-      return this as A;
-    } else {
-      throw 'Block type not expected';
-    }
-  }
+  A cast<A>() => this is A ? this as A : throw 'Block type not expected';
 
   @override
   String toString([int indentation]);
 }
 
-/// A block that can contain a map from blocks to other blocks.
+/// A block that contains a [Map] from [Block]s to other [Block]s.
+///
+/// Turns out, maps are a very useful datastructure: Lookup is very fast and
+/// most types can be reduced to a map:
+///
+/// * Classes can be seen as maps from field names to values.
+/// * [Map]s are maps.
+/// * [List]s can be seen as maps from integers (indexes) to values.
+/// * [Set]s can be seen as maps from values to nulls (either a key exists in
+///   the map or it doesn't).
 abstract class MapBlock extends Block {
-  const MapBlock();
+  factory MapBlock(ChestType type, Map<Block, Block> map) = _DefaultMapBlock;
+  const MapBlock.noop();
 
   Block? operator [](Block key);
   operator []=(Block key, Block value);
   List<MapEntry<Block, Block>> get entries;
 
-  MapBlock copyWith(Map<Block, Block> changes) {
+  /// Returns a copy of this [MapBlock] with the given changes. Changes with a
+  /// [null] as value are deletions.
+  MapBlock copyWith(Map<Block, Block?> changes) {
     final entries = this.entries.toMap();
     for (final entry in changes.entries) {
-      entries[entry.key] = entry.value;
+      if (entry.value == null) {
+        entries.remove(entry.key);
+      } else {
+        entries[entry.key] = entry.value!;
+      }
     }
-    return DefaultMapBlock(typeCode, entries);
+    return MapBlock(type, entries);
   }
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! MapBlock) return false;
-    if (typeCode != other.typeCode) return false;
-    final entries = this.entries;
-    final otherEntries = other.entries;
-    if (entries.length != otherEntries.length) return false;
-    for (var i = 0; i < entries.length; i++) {
-      if (entries[i] != otherEntries[i]) return false;
-    }
-    return true;
-  }
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MapBlock &&
+          type == other.type &&
+          entries.deeplyEquals(other.entries);
 
-  // TODO: Better hashCode.
-  int get hashCode => 0;
+  @override
+  int get hashCode => hash2(type, entries);
 
   @override
   int compareTo(Block other) {
     if (identical(this, other)) return 0;
 
-    var result = typeCode.compareTo(other.typeCode);
+    var result = type.compareTo(other.type);
     if (result != 0) return result;
 
     if (other is! MapBlock) return -1;
@@ -88,7 +157,7 @@ abstract class MapBlock extends Block {
 
   @override
   String toString([int indentation = 0]) {
-    final buffer = StringBuffer()..writeln('MapBlock($typeCode, {');
+    final buffer = StringBuffer()..writeln('MapBlock($type, {');
     for (final entry in entries) {
       buffer
         ..write(' ' * (indentation + 1))
@@ -102,34 +171,41 @@ abstract class MapBlock extends Block {
   }
 }
 
+class _DefaultMapBlock extends MapBlock {
+  _DefaultMapBlock(this.type, this.map) : super.noop();
+
+  final ChestType type;
+  final Map<Block, Block> map;
+
+  Block? operator [](Block key) => map[key];
+  operator []=(Block key, Block value) => map[key] = value;
+  List<MapEntry<Block, Block>> get entries => map.entries.toList();
+}
+
 /// A block that contains some bytes.
+///
+/// While [MapBlock] is an internal node in the [Block] tree, this is a leaf
+/// node. It's the most basic abstraction over raw data.
 abstract class BytesBlock extends Block {
-  const BytesBlock();
+  factory BytesBlock(ChestType type, List<int> bytes) = _DefaultBytesBlock;
+  const BytesBlock.noop();
 
   List<int> get bytes;
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! BytesBlock) return false;
-    if (typeCode != other.typeCode) return false;
-    final bytes = this.bytes;
-    final otherBytes = other.bytes;
-    if (bytes.length != otherBytes.length) return false;
-    for (var i = 0; i < bytes.length; i++) {
-      if (bytes[i] != otherBytes[i]) return false;
-    }
-    return true;
-  }
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BytesBlock &&
+          type == other.type &&
+          bytes.deeplyEquals(other.bytes);
 
-  // TODO: Better hashCode.
-  int get hashCode => 0;
+  int get hashCode => hash2(type, bytes);
 
   @override
   int compareTo(Block other) {
     if (identical(this, other)) return 0;
 
-    var result = typeCode.compareTo(other.typeCode);
+    var result = type.compareTo(other.type);
     if (result != 0) return result;
 
     if (other is! BytesBlock) return -1;
@@ -149,157 +225,182 @@ abstract class BytesBlock extends Block {
   }
 
   String toString([int indentation = 0]) {
-    return 'BytesBlock($typeCode, ${bytes.map((byte) => byte.toRadixString(16)).join(' ')})';
+    return 'BytesBlock($type, ${bytes.map((byte) => byte.toRadixString(16)).join(' ')})';
   }
 }
 
-// Default, straight-forward block implementations that keep everything in
-// memory as Dart objects.
+class _DefaultBytesBlock extends BytesBlock {
+  _DefaultBytesBlock(this.type, this.bytes) : super.noop();
 
-class DefaultMapBlock extends MapBlock {
-  DefaultMapBlock(this.typeCode, this.map);
-
-  final int typeCode;
-  final Map<Block, Block> map;
-
-  Block? operator [](Block key) => map[key];
-  operator []=(Block key, Block value) => map[key] = value;
-  List<MapEntry<Block, Block>> get entries => map.entries.toList();
-}
-
-class DefaultBytesBlock extends BytesBlock {
-  DefaultBytesBlock(this.typeCode, this.bytes);
-
-  final int typeCode;
+  final ChestType type;
   final List<int> bytes;
 }
 
-abstract class BlockView implements Block {
-  int get offset;
+/// A reference to part of a [Block].
+///
+/// The [Path] is similar to file system paths like `/usr/lib/bin`, but the
+/// segments/keys (the parts of the path) don't have to be `String`s – they can
+/// be any `T`.
+class Path<T> {
+  const Path(this.keys);
+  const Path.root() : this(const []);
 
-  static BlockView of(ByteBuffer buffer) {
-    return at(Data(ByteData.view(buffer)), 0);
-  }
+  final List<T> keys;
+  bool get isRoot => keys.isEmpty;
+  int get length => keys.length;
 
-  static BlockView at(Data data, int offset) {
-    final blockKind = data.getBlockKind(offset + 8);
-    if (blockKind == blockKindMap) {
-      return MapBlockView(data, offset);
-    } else if (blockKind == blockKindBytes) {
-      return BytesBlockView(data, offset);
-    } else {
-      throw 'Unknown block kind $blockKind.';
-    }
-  }
-}
-
-// Lazy block implementations that looks up data in a [_Data].
-
-class MapBlockView extends MapBlock implements BlockView {
-  MapBlockView(this.data, this.offset);
-
-  final Data data;
-  final int offset;
+  T get firstKey => keys.first;
+  Path<T> withoutFirst() => Path(keys.skip(1).toList());
+  bool startsWith(Block other) => !isRoot && keys.first == other;
 
   @override
-  int get typeCode => data.getTypeCode(offset);
+  String toString() => isRoot ? '<root>' : keys.join('/');
+}
 
-  int get length => data.getLength(offset + 8 + 1);
+/// Wrapper for a [Block] and the updates made to it.
+///
+/// You can get a part of it and update a part of it.
+///
+/// [UpdatableBlock]s have a block as the base and a map of updates, organized
+/// by the first path key that they apply to. Here's an example of how it works:
+///
+/// ```
+/// UpdatableBlock(
+///   block: User('Marcel', Pet('fish')),
+///   updates: {},
+/// ),
+/// ```
+///
+/// Updating the user's name to 'Jonas' and the pet's name to kitten, this is
+/// the new [UpdatableBlock]:
+///
+/// ```
+/// UpdatableBlock(
+///   block: User('Marcel', Pet('fish')),
+///   updates: {
+///     'name': UpdatableBlock(block: 'Jonas', updates: {}),
+///     'pet': UpdatableBlock(
+///       block: Pet('fish'),
+///       updates: {
+///         'name': 'fish',
+///       },
+///     ),
+///   },
+/// ),
+/// ```
+///
+/// Then, deleting the whole pet would result in this structure:
+///
+/// ```
+/// UpdatableBlock(
+///   block: User('Marcel', Pet('fish')),
+///   updates: {
+///     'name': UpdatableBlock(block: 'Jonas', updates: {}),
+///     'pet': null,
+///   },
+/// ),
+/// ```
+///
+/// Note that the `null` value overwrites the pet from the base block – so
+/// there's a difference between the `Map` having no value for a key and the
+/// value being `null`.
+class UpdatableBlock {
+  UpdatableBlock(this._block);
 
-  Block? operator [](Block key) {
-    final index = _getIndexOfKey(key);
-    if (index == null) return null;
-    return _getValueAt(index);
+  Block _block;
+  final _updates = <Block, UpdatableBlock?>{};
+  bool get _hasUpdates => _updates.isNotEmpty;
+
+  Block? getAt(Path<Block> path) {
+    if (path.isRoot) return _getAll();
+
+    final firstKey = path.firstKey;
+    if (_updates.containsKey(firstKey)) {
+      return _updates[firstKey]?.getAt(path.withoutFirst());
+    }
+
+    final keys = List.of(path.keys);
+    var value = _block;
+    while (!keys.isEmpty) {
+      if (value is! MapBlock) _throwInvalid(path);
+      value = value[keys.removeAt(0)] ?? _throwInvalid(path);
+    }
+    return value;
   }
 
-  operator []=(Block key, Block value) =>
-      (throw "Can't assign to MapBlockView.");
-
-  List<MapEntry<BlockView, BlockView>> get entries {
-    final length = this.length;
-    return <MapEntry<BlockView, BlockView>>[
-      for (var i = 0; i < length; i++) MapEntry(_getKeyAt(i), _getValueAt(i)),
-    ];
-  }
-
-  int? _getIndexOfKey(Block key) {
-    var left = 0;
-    var right = length;
-    while (left < right) {
-      final middleIndex = (left + right) ~/ 2;
-      final middleBlock = _getKeyAt(middleIndex);
-      final comparison = middleBlock.compareTo(key);
-      if (comparison == 0) {
-        return middleIndex;
-      } else if (comparison < 0) {
-        left = middleIndex + 1;
+  /// Returns this block with all updates applied.
+  Block _getAll() {
+    final block = _block;
+    if (!_hasUpdates) return block;
+    if (block is! MapBlock) {
+      panic('UpdatableBlock has updates, although its not a MapBlock.');
+    }
+    final map = block.entries.toMap();
+    _updates.forEach((key, block) {
+      if (block == null) {
+        map.remove(key);
       } else {
-        right = middleIndex;
+        map[key] = block._getAll();
       }
-    }
-    return null;
+    });
+    return MapBlock(_block.type, map);
   }
 
-  BlockView _getKeyAt(int index) =>
-      BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * index));
-  BlockView _getValueAt(int index) =>
-      BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * index + 8));
+  void update(
+    Path<Block> path,
+    Block? updatedBlock, {
+    required bool createImplicitly,
+  }) {
+    if (path.isRoot) {
+      if (updatedBlock == null) throw TriedToDeleteRootValueError();
+      // If the updatedBlock replaces the current block, all updates become
+      // irrelevant.
+      _block = updatedBlock;
+      _updates.clear();
+      return;
+    }
+
+    final block = _block;
+    if (block is! MapBlock) _throwInvalid(path);
+    final key = path.firstKey;
+
+    if (path.length > 1) {
+      /// Delegate the request to a child. Throw if it doesn't exist – even if
+      /// [createImplicitly] is set, that doesn't create the whole path to the
+      /// child, only the last entry.
+      final child = _updates.containsKey(key)
+          ? _updates[key] ?? _throwInvalid(path)
+          : UpdatableBlock(block[key] ?? _throwInvalid(path));
+      child.update(path, updatedBlock, createImplicitly: createImplicitly);
+      return;
+    }
+
+    assert(path.length == 1);
+
+    if (updatedBlock == null) {
+      // Delete a key.
+      _updates[key] = null;
+      return;
+    }
+
+    if (!createImplicitly && (_updates[key] ?? block[key]) == null) {
+      _throwInvalid(path);
+    }
+    _updates[key] = UpdatableBlock(updatedBlock);
+  }
+
+  Never _throwInvalid(Path<Block> path) => throw InvalidPathException(path);
 }
 
-class BytesBlockView extends BytesBlock implements BlockView {
-  BytesBlockView(this.data, this.offset);
+/// Indicates that you attempted to perform an operation with an invalid path.
+class InvalidPathException implements ChestException {
+  InvalidPathException(this.path);
 
-  final Data data;
-  final int offset;
+  final Path<Object> path;
 
-  @override
-  int get typeCode => data.getTypeCode(offset);
-
-  @override
-  List<int> get bytes {
-    final length = data.getLength(offset + 8 + 1);
-    return Uint8List.view(data.data.buffer, offset + 8 + 1 + 8, length);
-  }
+  String toString() => 'The path $path is invalid.';
 }
 
-// Conversion methods between objects and [Block]s.
-
-extension ObjectToBlock on Object? {
-  Block toBlock() {
-    final taper = registry.valueToTaper(this);
-    if (taper == null) {
-      throw 'No taper found for type $runtimeType.';
-    }
-    final typeCode = registry.taperToTypeCode(taper)!;
-    final data = taper.toData(this);
-    if (data is MapBlockData) {
-      return DefaultMapBlock(
-        typeCode,
-        data.map.map((key, value) => MapEntry(key.toBlock(), value.toBlock())),
-      );
-    } else if (data is BytesBlockData) {
-      return DefaultBytesBlock(typeCode, data.bytes);
-    } else {
-      throw 'Tapers should always return either a MapBlockData or BytesBlockData';
-    }
-  }
-}
-
-extension BlockToObject on Block {
-  Object toObject() {
-    final taper = registry.typeCodeToTaper(typeCode);
-    if (taper == null) {
-      throw 'No taper found for type code $typeCode.';
-    }
-    BlockData data;
-    Block this_ = this;
-    if (this_ is MapBlock) {
-      data = MapBlockData(this_.entries.toMap());
-    } else if (this_ is BytesBlock) {
-      data = BytesBlockData(this_.bytes);
-    } else {
-      throw 'Expected MapBlock or BytesBlock, but this is a $runtimeType.';
-    }
-    return taper.fromData(data);
-  }
+class TriedToDeleteRootValueError extends ChestError {
+  String toString() => 'You tried to delete the root value.';
 }

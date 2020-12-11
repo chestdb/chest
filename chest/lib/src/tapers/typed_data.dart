@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+/*import 'dart:typed_data';
 
 import '../tapers.dart';
 
@@ -23,3 +23,4 @@ class _TaperForUint8List extends BytesTaper<Uint8List> {
   @override
   Uint8List fromBytes(List<int> bytes) => Uint8List.fromList(bytes);
 }
+*/

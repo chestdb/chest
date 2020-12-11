@@ -1,8 +1,7 @@
-import 'dart:typed_data';
+/*import 'dart:typed_data';
 
 import 'blocks.dart';
 import 'utils.dart';
-import 'value.dart';
 
 /// Blocks are encoded like this:
 ///
@@ -108,3 +107,136 @@ extension BytesToBlock on Uint8List {
     return BlockView.at(data, 0);
   }
 }
+
+// Lazy block implementations that looks up data in a [_Data].
+
+// Block views.
+
+abstract class BlockView implements Block {
+  int get offset;
+
+  static BlockView of(ByteBuffer buffer) {
+    return at(Data(ByteData.view(buffer)), 0);
+  }
+
+  static BlockView at(Data data, int offset) {
+    final blockKind = data.getBlockKind(offset + 8);
+    if (blockKind == blockKindMap) {
+      return MapBlockView(data, offset);
+    } else if (blockKind == blockKindBytes) {
+      return BytesBlockView(data, offset);
+    } else {
+      throw 'Unknown block kind $blockKind.';
+    }
+  }
+}
+
+class MapBlockView extends MapBlock implements BlockView {
+  MapBlockView(this.data, this.offset);
+
+  final Data data;
+  final int offset;
+
+  @override
+  int get typeCode => data.getTypeCode(offset);
+
+  int get length => data.getLength(offset + 8 + 1);
+
+  Block? operator [](Block key) {
+    final index = _getIndexOfKey(key);
+    if (index == null) return null;
+    return _getValueAt(index);
+  }
+
+  operator []=(Block key, Block value) =>
+      (throw "Can't assign to MapBlockView.");
+
+  List<MapEntry<BlockView, BlockView>> get entries {
+    final length = this.length;
+    return <MapEntry<BlockView, BlockView>>[
+      for (var i = 0; i < length; i++) MapEntry(_getKeyAt(i), _getValueAt(i)),
+    ];
+  }
+
+  int? _getIndexOfKey(Block key) {
+    var left = 0;
+    var right = length;
+    while (left < right) {
+      final middleIndex = (left + right) ~/ 2;
+      final middleBlock = _getKeyAt(middleIndex);
+      final comparison = middleBlock.compareTo(key);
+      if (comparison == 0) {
+        return middleIndex;
+      } else if (comparison < 0) {
+        left = middleIndex + 1;
+      } else {
+        right = middleIndex;
+      }
+    }
+    return null;
+  }
+
+  BlockView _getKeyAt(int index) =>
+      BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * index));
+  BlockView _getValueAt(int index) =>
+      BlockView.at(data, data.getPointer(offset + 8 + 1 + 8 + 16 * index + 8));
+}
+
+class BytesBlockView extends BytesBlock implements BlockView {
+  BytesBlockView(this.data, this.offset);
+
+  final Data data;
+  final int offset;
+
+  @override
+  int get typeCode => data.getTypeCode(offset);
+
+  @override
+  List<int> get bytes {
+    final length = data.getLength(offset + 8 + 1);
+    return Uint8List.view(data.data.buffer, offset + 8 + 1 + 8, length);
+  }
+}
+
+// Conversion methods between objects and [Block]s.
+
+extension ObjectToBlock on Object? {
+  Block toBlock() {
+    final taper = registry.valueToTaper(this);
+    if (taper == null) {
+      throw 'No taper found for type $runtimeType.';
+    }
+    final typeCode = registry.taperToTypeCode(taper)!;
+    final data = taper.toData(this);
+    if (data is MapBlockData) {
+      return DefaultMapBlock(
+        typeCode,
+        data.map.map((key, value) => MapEntry(key.toBlock(), value.toBlock())),
+      );
+    } else if (data is BytesBlockData) {
+      return DefaultBytesBlock(typeCode, data.bytes);
+    } else {
+      throw 'Tapers should always return either a MapBlockData or BytesBlockData';
+    }
+  }
+}
+
+extension BlockToObject on Block {
+  Object toObject() {
+    final taper = registry.typeCodeToTaper(typeCode);
+    if (taper == null) {
+      throw 'No taper found for type code $typeCode.';
+    }
+    BlockData data;
+    Block this_ = this;
+    if (this_ is MapBlock) {
+      data = MapBlockData(this_.entries.toMap());
+    } else if (this_ is BytesBlock) {
+      data = BytesBlockData(this_.bytes);
+    } else {
+      throw 'Expected MapBlock or BytesBlock, but this is a $runtimeType.';
+    }
+    return taper.fromData(data);
+  }
+}
+*/

@@ -1,10 +1,10 @@
-import 'dart:async';
+/*import 'dart:async';
 
+import 'api.dart';
 import 'blocks.dart';
 import 'storage/storage.dart';
 import 'storage/vm/storage.dart';
 import 'tapers.dart';
-import 'value.dart';
 
 /// A container for a variable that's persisted beyond the app's lifetime.
 class Chest<T> implements Ref<T> {
@@ -26,7 +26,7 @@ class Chest<T> implements Ref<T> {
     if (initialValue == null) {
       final newValue = (await ifNew()).toBlock();
       storage.setValue(Path.root(), newValue);
-      initialValue = Value(newValue);
+      initialValue = UpdatableBlock(newValue);
     }
     final chest = Chest<T>._(
       name: name,
@@ -40,7 +40,7 @@ class Chest<T> implements Ref<T> {
   Chest._({
     required this.name,
     required Storage storage,
-    required Value initialValue,
+    required UpdatableBlock initialValue,
   })   : _storage = storage,
         _value = initialValue {
     _storage.updates.listen((update) {
@@ -52,7 +52,7 @@ class Chest<T> implements Ref<T> {
   final String name;
 
   /// A local, dense in-memory representation of the database.
-  final Value _value;
+  final UpdatableBlock _value;
   final Storage _storage;
 
   /// A stream that emits an event every time the value changes.
@@ -111,3 +111,4 @@ class _FieldRef<T> implements Ref<T> {
 }
 
 final _chests = <String, Chest>{};
+*/

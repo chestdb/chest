@@ -1,4 +1,4 @@
-import 'dart:math';
+/*import 'dart:math';
 
 import '../tapers.dart';
 
@@ -84,3 +84,4 @@ class _TaperForPoint<T extends num> extends ClassTaper<Point<T>> {
     return Point(fields['x'] as T, fields['y'] as T);
   }
 }
+*/
