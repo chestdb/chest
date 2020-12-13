@@ -33,6 +33,15 @@ extension WhereKeyValue<K, V> on Iterable<MapEntry<K, V>> {
   Map<K, V> toMap() => Map.fromEntries(this);
 }
 
+bool get isDebug {
+  var test = false;
+  assert(() {
+    test = true;
+    return true;
+  }());
+  return test;
+}
+
 abstract class ChestException implements Exception {}
 
 abstract class ChestError extends Error {}
