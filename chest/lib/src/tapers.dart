@@ -6,7 +6,8 @@ export 'tapers/core.dart';
 export 'tapers/math.dart';
 export 'tapers/typed_data.dart';
 
-/// The format that [Taper]s produce.
+/// An intermediary representation of data. [Taper]s produce this when they
+/// serialize [Object]s.
 abstract class TapeData {}
 
 class MapTapeData extends TapeData {
@@ -29,9 +30,10 @@ class BytesTapeData extends TapeData {
 ///
 /// ```
 /// tape.register({
-///   0: taper.forUser(),
+///   ...tapers.forDartCore, // This unpacks to many tapers.
+///   0: taper.forUser(), // A taper for a specific type.
+///   2: legacyTaper.forUser().v1, // This is a migration.
 ///   1: taper.forPet(),
-///   2: taper.forUserV1() >> taper.forUser(), // This is a migration.
 /// });
 /// ```
 abstract class Taper<T> {
@@ -39,11 +41,15 @@ abstract class Taper<T> {
 
   Type get type => T;
   bool matches(Object? value) => value is T;
-
-  bool get isMigrating => false;
-
+  bool get isLegacy => false;
   void _registerForTypeCode(int typeCode) =>
       registry._registerSingle(typeCode, this);
+
+  /// Turns the [value] into [TapeData].
+  TapeData toData(T value);
+
+  /// Turns [TapeData] back into a value of type [T].
+  T fromData(TapeData data);
 
   @override
   operator ==(Object other) =>
@@ -54,57 +60,6 @@ abstract class Taper<T> {
 
   @override
   int get hashCode => hash2(runtimeType, type);
-
-  ConcreteType get concreteType;
-  // operator >>(Taper<T> other);
-}
-
-abstract class ConcreteTaper<T> extends Taper<T> {
-  const ConcreteTaper();
-
-  /// Turns the [value] into [TapeData].
-  TapeData toData(T value);
-
-  /// Turns [TapeData] back into a value of type [T].
-  T fromData(TapeData data);
-
-  /// Creates a new [Taper] that [isMigrating] and uses this taper for decoding
-  /// and the [other] one for encoding.
-  // operator >>(Taper<T> other) => _MigratingTaper(this, other);
-
-  ConcreteType get concreteType =>
-      ConcreteType(registry.taperToTypeCode(this)!);
-}
-
-class _MigratingTaper<T> extends ConcreteTaper<T> {
-  _MigratingTaper(this.from, this.to);
-
-  bool get isMigrating => true;
-
-  final ConcreteTaper<T> from;
-  final ConcreteTaper<T> to;
-
-  TapeData toData(T value) => to.toData(value);
-  T fromData(TapeData data) => from.fromData(data);
-}
-
-/// A class that's not a fully fledged [Taper] just yet. Used for generic types.
-///
-/// Example: [SemiTaperForList] is a `SemiTaper<List<dynamic>>` that can't be
-/// used for serializing concrete `List? s yet. Instead, this semi-taper should
-/// be enriched with concrete types for the generics, e.g. turned into a
-/// `Taper<List<String>>`.
-///
-/// This indirection is necessary so we can construct i.e. `List<String>`s
-/// without ever specifying the `List<String>` type in our code, only a
-/// `SemiTaperForList` and a `TaperForString`. So, this solves the combinatorial
-/// explosion of generics.
-abstract class GenericTaper<T> extends Taper<T> {
-  /// There are more concrete [SemiTaper]s that each have an [enrich] method
-  /// with a different number of type arguments.
-
-  // operator >>(Taper<T> other) => _MigratingTaper(this, other);
-  Taper<T> enrich<A>(Taper<A> type);
 }
 
 /// The [registry] contains all registered [Taper]s. It makes these
@@ -122,7 +77,11 @@ final registry = _Registry();
 
 class _AnyTaper extends Taper<Object?> {
   @override
-  ConcreteType get concreteType => throw 'Any shouldnt be concrete.';
+  Object? fromData(TapeData data) =>
+      panic("_AnyTaper.fromData should never be called.");
+
+  @override
+  TapeData toData(Object? value) => throw NoTaperForValueError(value);
 }
 
 class _Registry {
@@ -143,81 +102,68 @@ class _Registry {
   /// Shortcuts into the tree.
   final _shortcutsIntoTheTree = <Type, _Type<dynamic>>{};
 
+  /// Registers the [taper] for the [typeCode].
   void _registerSingle<T>(int typeCode, Taper<T> taper) {
-    var isDebug = false;
-    assert(isDebug = true);
-    if (isDebug) {
-      final previousTypeCode = taperToTypeCode(taper);
-      if (previousTypeCode != null) {
-        // TODO: Better error.
-        throw 'Taper registered for multiple type codes.';
-        /*TaperRegisteredForMultipleTypeCodes(
-          taper: taper,
-          firstTypeCode: taperToTypeCode(taper),
-          secondTypeCode: typeCode,
-        );*/
-      }
-    }
-
     _tapersToTypeCodes[taper] = typeCode;
     _typeCodesToTapers[typeCode] = taper;
 
+    // Legacy tapers are not inserted into the type tree because they are only
+    // used for deserialization, never serialization of values. So, we also
+    // never have to find them based on a value.
+    if (taper.isLegacy) return;
+
+    if (inDebugMode) {
+      final previousTypeCode = taperToTypeCode(taper);
+      if (previousTypeCode != null) {
+        throw TaperRegisteredTwiceError(taper, previousTypeCode, typeCode);
+      }
+    }
+
     final type = _Type<T>(taper);
-    _shortcutsIntoTheTree[taper.type] ??= type;
+    _shortcutsIntoTheTree[T] ??= type;
     _typeTree.insert(type);
   }
 
-  /// Register multiple adapters.
+  /// Registers multiple adapters.
   void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
-    assert(!_isInitialized, 'Only call register once with all needed tapers.');
+    if (!_isInitialized) throw RegisterCalledTwiceError();
     _isInitialized = true;
 
-    /// We don't call [registerSingle] directly, but rather let the [Taper] call
-    /// that method, because otherwise we would lose type information (the
-    /// static type of the adapters inside the map is `TypeAdapter<dynamic>`).
+    /// We don't call [_registerSingle] directly, but rather let the [Taper]
+    /// call that method, because otherwise we would lose type information (the
+    /// static type of the tapers inside the map is `Taper<dynamic>`).
     typeCodesToTapers.forEach((typeCode, taper) {
       taper._registerForTypeCode(typeCode);
     });
-
-    print(treeAsDebugString());
   }
 
   int? taperToTypeCode(Taper<dynamic> taper) => _tapersToTypeCodes[taper];
   Taper<dynamic>? typeCodeToTaper(int typeCode) => _typeCodesToTapers[typeCode];
 
   /// Finds an adapter for serializing the [value].
-  Taper<T> valueToTaper<T>(T value) {
-    // Find the best matching adapter in the type tree.
-    final type = _shortcutsIntoTheTree[value.runtimeType] ?? _typeTree;
-    var concreteType = type._concreteTypeWhere(value);
-    print('Concrete type is $concreteType');
-    // return concreteType.taper as Taper<T>;
-    throw 'valueToTaper end';
+  Taper<Object?> valueToTaper<T>(T value) {
+    // Start at the root node of the type tree or a shortcut, if available.
+    // Then, repeatedly follow the first subtype that matches the tapers value.
+    var type = _shortcutsIntoTheTree[value.runtimeType] ?? _typeTree;
+    while (true) {
+      final matchingSubtype =
+          type.subtypes.where((it) => it.matches(value)).firstOrNull;
+      if (matchingSubtype == null) break;
+      type = matchingSubtype;
+    }
+    final taper = type.taper;
+    if (!type.matches(value)) {
+      panic("Shortcut into the tree for ${value.runtimeType} is to a taper "
+          "that's not for ${value.runtimeType}, but for ${type.type}.");
+    }
+    if (!_debugIsSameType(value.runtimeType, type.type)) {
+      print('Warning from Chest: We use a taper for type ${type.type} to '
+          'encode a value of type ${value.runtimeType}. The value is $value.');
+    }
 
-    // final subtype = type.subtypes.where((it) => it.matches(value)).firstOrNull;
-    // final matchingTypeNode =
-    //     matchingSubType?.findTypeByValue<R>(value) ?? (this as _Type<R?>);
-
-    // final matchingTypeNode = searchStartType.findTypeByValue(object);
-    // final matchingType = matchingTypeNode.type;
-    // final actualType = object.runtimeType;
-
-    // TODO: Move this to the conversion methods.
-    /*assert(() {
-      if (matchingTypeNode.taper == null) {
-        throw Exception('No adapter for the type $actualType found. Consider '
-            'adding an adapter for that type by calling '
-            '${taperSuggestion(actualType)}.');
-      }
-
-      if (!_debugIsSameType(actualType, matchingType)) {
-        debugPrint("No adapter for the exact type $actualType found, so we're "
-            'encoding it as a ${matchingTypeNode.type}. For better performance '
-            'and truly type-safe serializing, consider adding an adapter for '
-            'that type by calling ${taperSuggestion(actualType)}.');
-      }
-      return true;
-    }());*/
+    // Make lookup faster for the next time.
+    _shortcutsIntoTheTree[value.runtimeType] = type;
+    return taper;
   }
 
   static bool _debugIsSameType(Type runtimeType, Type staticType) {
@@ -252,16 +198,19 @@ class _Type<T> {
   bool isSupertypeOf(_Type<Object?> node) => node is _Type<T>;
   A run<A>(A Function<T>() callback) => callback();
 
+  /// Inserts a new value.
+  ///
+  /// If the new type is a supertype of any of our subtypes, we insert it
+  /// between us and those types. This is good because it decreases the number
+  /// of direct subtypes we have, so the tree breadth decreases and lookups are
+  /// faster.
+  /// If that's not possible, then we insert the new type into those of our
+  /// subtypes that it's a subtype of, or otherwise, we add it as our own.
   void insert(_Type<T> newType) {
-    assert(newType.runtimeType != runtimeType,
-        'The same type was inserted into the tree twice: $runtimeType');
+    if (newType.runtimeType == runtimeType) {
+      throw TwoTapersForTheSameTypeRegisteredError();
+    }
 
-    // If the new type is a supertype of any of our subtypes, we insert it
-    // between us and those types. This is good because it decreases the number
-    // of direct subtypes we have, so the tree breadth decreases and lookups are
-    // faster.
-    // If that's not possible, then we insert the new type into those of our
-    // subtypes that it's a subtype of, or otherwise, we add it as our own.
     final newTypeSubtypes =
         subtypes.where((it) => newType.isSupertypeOf(it)).toList();
     final newTypeSupertypes =
@@ -277,49 +226,6 @@ class _Type<T> {
     } else {
       subtypes.add(newType);
     }
-  }
-
-  /// Enriches the given type with our type.
-  Taper<T> enrich<A>(_Type<A> type) {
-    final taper = this.taper;
-    if (taper is GenericTaper<T>) {
-      return taper.enrich(taper);
-    }
-    throw 'Tried to enrich, but this is not a generic type.';
-  }
-
-  ConcreteType _concreteTypeWhere<T>(
-    dynamic value, [
-    GenericTaper<T>? generic,
-  ]) {
-    if (generic == null) {
-      final bestFittingTaper = subtypes
-              .map((it) => it.taper)
-              .where((it) => it.matches(value))
-              .firstOrNull ??
-          taper;
-      if (bestFittingTaper is GenericTaper<T>) {
-        return registry._typeTree
-            ._concreteTypeWhere(value, bestFittingTaper as GenericTaper<T>);
-      } else {
-        // return _ConcreteType(type);
-        throw "In the else. Best fitting taper is $bestFittingTaper.";
-      }
-    } else {
-      print('Finding concrete type starting from $this. Generic: $generic.');
-      final bestFittingTaper = subtypes
-              .map((it) => it.taper)
-              .where((it) => generic.enrich(it).matches(value))
-              .firstOrNull ??
-          taper;
-      print(
-          'Continuing at type $bestFittingTaper because ${generic.enrich(bestFittingTaper)} matches $value.');
-      print('Enriched generic is ${generic.enrich(bestFittingTaper)}.');
-      print(
-          'Concrete type is ${generic.enrich(bestFittingTaper).concreteType}.');
-      // final enriched = taper.enrich(fittingSubtype);
-    }
-    throw 'Reached the end.';
   }
 
   String asDebugString() {
@@ -346,11 +252,34 @@ class _Type<T> {
   }
 }
 
-class ConcreteType {
-  ConcreteType(this.typeCode, [this.generics = const []]);
+// Errors.
 
-  final int typeCode;
-  final List<ConcreteType> generics;
+class RegisterCalledTwiceError extends ChestError {
+  String toString() =>
+      'You called tape.register twice. Only call it once with all needed tapers.';
+}
 
-  String toString() => '$typeCode<${generics.join(', ')}>';
+class TwoTapersForTheSameTypeRegisteredError extends ChestError {
+  String toString() => 'Your registered two tapers for the same type.';
+}
+
+class TaperRegisteredTwiceError extends ChestError {
+  TaperRegisteredTwiceError(this.taper, this.typeCode1, this.typeCode2);
+
+  final Taper<Object?> taper;
+  final int typeCode1;
+  final int typeCode2;
+
+  String toString() =>
+      'Taper $taper registered for two type codes ($typeCode1, $typeCode2).';
+}
+
+class NoTaperForValueError extends ChestError {
+  NoTaperForValueError(this.value);
+
+  final Object? value;
+
+  String toString() =>
+      'There is no taper registered for serializing the value $value of type '
+      '${value.runtimeType}.';
 }
