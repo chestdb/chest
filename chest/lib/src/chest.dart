@@ -1,4 +1,4 @@
-/*import 'dart:async';
+import 'dart:async';
 
 import 'api.dart';
 import 'blocks.dart';
@@ -44,7 +44,7 @@ class Chest<T> implements Ref<T> {
   })   : _storage = storage,
         _value = initialValue {
     _storage.updates.listen((update) {
-      _value.update(update.path, update.value);
+      _value.update(update.path, update.value, createImplicitly: true);
       _valueChangedController.add(null);
     });
   }
@@ -71,8 +71,8 @@ class Chest<T> implements Ref<T> {
 
   @override
   set value(T value) => _setAt(Path.root(), value.toBlock());
-  void _setAt(Path<Block> path, Block value) {
-    _value.update(path, value);
+  void _setAt(Path<Block> path, Block value, {required bool createImplicitly}) {
+    _value.update(path, value, createImplicitly: createImplicitly);
     _valueChangedController.add(null);
     _storage.setValue(path, value);
   }
@@ -90,20 +90,21 @@ class Chest<T> implements Ref<T> {
 
 /// A reference to an interior part of the same [Chest].
 abstract class Ref<T> {
-  Ref<R> child<R>(Object? key);
+  Ref<R> child<R>(Object? key, {bool createImplicitly = false});
   set value(T value);
   T get value;
   Stream<T> watch();
 }
 
 class _FieldRef<T> implements Ref<T> {
-  _FieldRef(this.chest, this.path);
+  _FieldRef(this.chest, this.path, this.createImplicitly);
 
   final Chest chest;
   final Path<Object?> path;
+  final bool createImplicitly;
 
-  Ref<R> child<R>(Object? key) =>
-      _FieldRef(chest, Path<Object?>([...path.keys, key]));
+  Ref<R> child<R>(Object? key, {bool createImplicitly = false}) =>
+      _FieldRef(chest, Path<Object?>([...path.keys, key]), createImplicitly);
 
   set value(T value) => chest._setAt(path.serialize(), value.toBlock());
   T get value => chest._getAt(path.serialize());
@@ -111,4 +112,3 @@ class _FieldRef<T> implements Ref<T> {
 }
 
 final _chests = <String, Chest>{};
-*/
