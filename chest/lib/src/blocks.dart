@@ -2,71 +2,6 @@ import 'package:more/more.dart';
 
 import 'utils.dart';
 
-/// A reference to a type that can be saved in a [Chest].
-///
-/// [ChestType]s correspond to [Type]s in Dart's type system.
-///
-/// [typeCode]s refer to a single named type. For example, while a whole
-/// [ChestType] might correspond to `List<String>`, only `List` and `String`
-/// have [typeCode]s, not `List<String>`.
-abstract class ChestType implements Comparable<ChestType> {
-  factory ChestType(int typeCode, List<ChestType> generics) = _DefaultChestType;
-  const ChestType.noop();
-
-  int get typeCode;
-  List<ChestType> get generics;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ChestType &&
-          typeCode == other.typeCode &&
-          generics.deeplyEquals(other.generics);
-
-  @override
-  int get hashCode => hash2(typeCode, generics);
-
-  @override
-  int compareTo(ChestType other) {
-    var result = typeCode.compareTo(other.typeCode);
-    if (result != 0) return result;
-
-    final generics = this.generics;
-    final otherGenerics = other.generics;
-    result = generics.length.compareTo(other.generics.length);
-    if (result != 0) return result;
-
-    for (var i = 0; i < generics.length; i++) {
-      result = generics[i].compareTo(otherGenerics[i]);
-      if (result != 0) return result;
-    }
-
-    return 0;
-  }
-
-  @override
-  String toString() {
-    final buffer = StringBuffer('$typeCode');
-    if (generics.isNotEmpty) {
-      buffer
-        ..write('<')
-        ..writeAll(generics)
-        ..write('>');
-    }
-    return buffer.toString();
-  }
-}
-
-class _DefaultChestType extends ChestType {
-  _DefaultChestType(this.typeCode, this.generics) : super.noop();
-
-  @override
-  final int typeCode;
-
-  @override
-  final List<ChestType> generics;
-}
-
 /// An intermediary format that doesn't contain arbitrary [Object]s anymore, but
 /// rather consists of two simple primitives: `MapBlock`s and `ByteBlock`s.
 ///
@@ -76,7 +11,7 @@ class _DefaultChestType extends ChestType {
 abstract class Block implements Comparable<Block> {
   const Block();
 
-  ChestType get type;
+  int get typeCode;
 
   A cast<A>() => this is A ? this as A : throw 'Block type not expected';
 
@@ -95,7 +30,7 @@ abstract class Block implements Comparable<Block> {
 /// * [Set]s can be seen as maps from values to nulls (either a key exists in
 ///   the map or it doesn't).
 abstract class MapBlock extends Block {
-  factory MapBlock(ChestType type, Map<Block, Block> map) = _DefaultMapBlock;
+  factory MapBlock(int typeCode, Map<Block, Block> map) = _DefaultMapBlock;
   const MapBlock.noop();
 
   Block? operator [](Block key);
@@ -113,24 +48,24 @@ abstract class MapBlock extends Block {
         entries[entry.key] = entry.value!;
       }
     }
-    return MapBlock(type, entries);
+    return MapBlock(typeCode, entries);
   }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is MapBlock &&
-          type == other.type &&
+          typeCode == other.typeCode &&
           entries.deeplyEquals(other.entries);
 
   @override
-  int get hashCode => hash2(type, entries);
+  int get hashCode => hash2(typeCode, entries);
 
   @override
   int compareTo(Block other) {
     if (identical(this, other)) return 0;
 
-    var result = type.compareTo(other.type);
+    var result = typeCode.compareTo(other.typeCode);
     if (result != 0) return result;
 
     if (other is! MapBlock) return -1;
@@ -157,7 +92,7 @@ abstract class MapBlock extends Block {
 
   @override
   String toString([int indentation = 0]) {
-    final buffer = StringBuffer()..writeln('MapBlock($type, {');
+    final buffer = StringBuffer()..writeln('MapBlock($typeCode, {');
     for (final entry in entries) {
       buffer
         ..write(' ' * (indentation + 1))
@@ -172,9 +107,9 @@ abstract class MapBlock extends Block {
 }
 
 class _DefaultMapBlock extends MapBlock {
-  _DefaultMapBlock(this.type, this.map) : super.noop();
+  _DefaultMapBlock(this.typeCode, this.map) : super.noop();
 
-  final ChestType type;
+  final int typeCode;
   final Map<Block, Block> map;
 
   Block? operator [](Block key) => map[key];
@@ -187,7 +122,7 @@ class _DefaultMapBlock extends MapBlock {
 /// While [MapBlock] is an internal node in the [Block] tree, this is a leaf
 /// node. It's the most basic abstraction over raw data.
 abstract class BytesBlock extends Block {
-  factory BytesBlock(ChestType type, List<int> bytes) = _DefaultBytesBlock;
+  factory BytesBlock(int typeCode, List<int> bytes) = _DefaultBytesBlock;
   const BytesBlock.noop();
 
   List<int> get bytes;
@@ -196,16 +131,16 @@ abstract class BytesBlock extends Block {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is BytesBlock &&
-          type == other.type &&
+          typeCode == other.typeCode &&
           bytes.deeplyEquals(other.bytes);
 
-  int get hashCode => hash2(type, bytes);
+  int get hashCode => hash2(typeCode, bytes);
 
   @override
   int compareTo(Block other) {
     if (identical(this, other)) return 0;
 
-    var result = type.compareTo(other.type);
+    var result = typeCode.compareTo(other.typeCode);
     if (result != 0) return result;
 
     if (other is! BytesBlock) return -1;
@@ -225,14 +160,14 @@ abstract class BytesBlock extends Block {
   }
 
   String toString([int indentation = 0]) {
-    return 'BytesBlock($type, ${bytes.map((byte) => byte.toRadixString(16)).join(' ')})';
+    return 'BytesBlock($typeCode, ${bytes.map((byte) => byte.toRadixString(16)).join(' ')})';
   }
 }
 
 class _DefaultBytesBlock extends BytesBlock {
-  _DefaultBytesBlock(this.type, this.bytes) : super.noop();
+  _DefaultBytesBlock(this.typeCode, this.bytes) : super.noop();
 
-  final ChestType type;
+  final int typeCode;
   final List<int> bytes;
 }
 
@@ -343,7 +278,7 @@ class UpdatableBlock {
         map[key] = block._getAll();
       }
     });
-    return MapBlock(_block.type, map);
+    return MapBlock(_block.typeCode, map);
   }
 
   void update(
