@@ -1,8 +1,7 @@
-/*import 'dart:convert';
+import 'dart:convert';
 import 'dart:typed_data';
 
-import '../chest.dart';
-import '../tapers.dart';
+import 'basics.dart';
 
 extension TapersPackageForDartCore on TapersForPackageApi {
   Map<int, Taper<dynamic>> forDartCore() {
@@ -233,4 +232,3 @@ class _TaperForMap<K, V> extends MapTaper<Map<K, V>> {
 extension ChildrenOfMap<K, V> on Ref<Map<K, V>> {
   Ref<V> operator [](K key) => child(key);
 }
-*/

@@ -1,6 +1,6 @@
-/*import 'dart:math';
+import 'dart:math';
 
-import '../tapers.dart';
+import 'basics.dart';
 
 extension TapersPackageForDartMath on TapersForPackageApi {
   Map<int, Taper<dynamic>> forDartMath() {
@@ -84,4 +84,3 @@ class _TaperForPoint<T extends num> extends ClassTaper<Point<T>> {
     return Point(fields['x'] as T, fields['y'] as T);
   }
 }
-*/

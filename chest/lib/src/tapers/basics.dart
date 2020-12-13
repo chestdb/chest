@@ -1,4 +1,10 @@
-/*/// A [Taper] that turns an object into bytes.
+import '../tapers.dart';
+
+export '../api.dart';
+export '../chest.dart';
+export '../tapers.dart';
+
+/// A [Taper] that turns a value into a `Map<Object?, Object?>`.
 abstract class MapTaper<T> extends Taper<T> {
   const MapTaper();
 
@@ -6,19 +12,18 @@ abstract class MapTaper<T> extends Taper<T> {
   T fromMap(Map<Object?, Object?> fields);
 
   TapeData toData(T value) {
-    return MapTapeData(toMap(value)
-        .map((key, value) => MapEntry(key.toBlock(), value.toBlock())));
+    return MapTapeData(toMap(value).map((key, value) => MapEntry(key, value)));
   }
 
   T fromData(TapeData data) {
     if (data is! MapTapeData) {
-      throw 'Expected Map<Object?, Object?>, got ${data.runtimeType}';
+      throw 'Expected MapTapeData, got ${data.runtimeType}';
     }
     return fromMap(data.map);
   }
 }
 
-/// A [Taper] that turns an object into bytes.
+/// A [Taper] that turns a value into a `List<int>` containing bytes.
 abstract class BytesTaper<T> extends Taper<T> {
   const BytesTaper();
 
@@ -50,4 +55,3 @@ abstract class ClassTaper<T> extends MapTaper<T> {
     return fromFields(map);
   }
 }
-*/

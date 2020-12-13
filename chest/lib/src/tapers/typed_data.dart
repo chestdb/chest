@@ -1,6 +1,6 @@
-/*import 'dart:typed_data';
+import 'dart:typed_data';
 
-import '../tapers.dart';
+import 'basics.dart';
 
 extension TapersPackageForDartTypedData on TapersForPackageApi {
   Map<int, Taper<dynamic>> forDartTypedData() {
@@ -23,4 +23,3 @@ class _TaperForUint8List extends BytesTaper<Uint8List> {
   @override
   Uint8List fromBytes(List<int> bytes) => Uint8List.fromList(bytes);
 }
-*/
