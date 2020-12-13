@@ -33,7 +33,7 @@ extension WhereKeyValue<K, V> on Iterable<MapEntry<K, V>> {
   Map<K, V> toMap() => Map.fromEntries(this);
 }
 
-bool get isDebug {
+bool get inDebugMode {
   var test = false;
   assert(() {
     test = true;
