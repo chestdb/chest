@@ -90,6 +90,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [x] Properly handle multiple opens of the same Chest
 - [x] Revisit value access syntax
 - [x] Handle errors gracefully
+- [x] Write docs on how it works in principle
 - [ ] Implement compaction
 - [ ] Support taper migration
 - [ ] Properly handle opening a chest in multiple isolates
@@ -109,7 +110,6 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [ ] Write docs on how to get started
 - [ ] Write docs on how to write tapers
 - [ ] Write docs on how to migrate tapers
-- [ ] Write docs on how it works in principle
 - [ ] Document the tape format
 - [ ] Document the file format
 - [ ] Write tests
