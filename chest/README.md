@@ -96,6 +96,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [ ] Support storing references
 - [ ] Support lazy chests
 - [ ] cross-Isolate adapter registry?
+- [ ] Suggest adapters
 - [ ] Add cycle detection
   - [ ] during serialization
   - [ ] during deserialization
