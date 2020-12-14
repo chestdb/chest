@@ -1,62 +1,10 @@
-import 'dart:convert';
-
 import 'chest.dart';
 
-class TaperForInt extends ConcreteTaper<int> {
-  @override
-  int fromData(TapeData data) {
-    // TODO: implement fromData
-    throw UnimplementedError();
-  }
-
-  @override
-  TapeData toData(int value) {
-    // TODO: implement toData
-    throw UnimplementedError();
-  }
-}
-
-class TaperForList extends GenericTaper<List<dynamic>> {
-  @override
-  Taper<List<A>> enrich<A>(Taper<A> a) {
-    print('Enriching $this with $a, which tapes $A.');
-    return ConcreteTaperForList<A>(a);
-  }
-
-  ConcreteType get concreteType =>
-      ConcreteType(registry.taperToTypeCode(this)!);
-}
-
-class ConcreteTaperForList<A> extends Taper<List<A>> {
-  ConcreteTaperForList(this._a);
-
-  final Taper<A> _a;
-
-  ConcreteType get concreteType => ConcreteType(
-      registry.taperToTypeCode(TaperForList())!, [_a.concreteType]);
-}
-
 void main() async {
-  registry.register({
-    0: TaperForInt(),
-    // 1: TaperForString(),
-    2: TaperForList(),
-    // 3: TaperForMap(),
+    0: taper.forUser(),
+    1: taper.forPet(),
+    // 2: legacyTaper.forUser().v1,
   });
-
-  // registry.valueToTaper(2);
-  registry.valueToTaper([
-    [1]
-  ]);
-
-  // tape.register({
-  //   ...tapers.forDartCore,
-  //   ...tapers.forDartMath,
-  //   ...tapers.forDartTypedData,
-  //   0: taper.forUser.v1 >> taper.forUser,
-  //   1: taper.forPet,
-  //   2: taper.forUser,
-  // });
 
   /// Chests are a storage for global, persisted variables.
   // print('Opening foo chest');

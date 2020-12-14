@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'basics.dart';
 
 extension TapersPackageForDartCore on TapersForPackageApi {
-  Map<int, Taper<dynamic>> forDartCore() {
+  Map<int, Taper<dynamic>> get forDartCore {
     return {
       -1: taper.forNull(),
       -2: taper.forBool(),

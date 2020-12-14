@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'basics.dart';
 
 extension TapersPackageForDartTypedData on TapersForPackageApi {
-  Map<int, Taper<dynamic>> forDartTypedData() {
+  Map<int, Taper<dynamic>> get forDartTypedData {
     return {
       -40: taper.forUint8List(),
     };

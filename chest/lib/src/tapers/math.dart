@@ -3,7 +3,7 @@ import 'dart:math';
 import 'basics.dart';
 
 extension TapersPackageForDartMath on TapersForPackageApi {
-  Map<int, Taper<dynamic>> forDartMath() {
+  Map<int, Taper<dynamic>> get forDartMath {
     return {
       -30: taper.forMutableRectangle<int>(),
       -31: taper.forMutableRectangle<double>(),
