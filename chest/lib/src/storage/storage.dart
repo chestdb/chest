@@ -1,15 +1,13 @@
-/*import '../blocks.dart';
-import '../value.dart';
+import '../blocks.dart';
 
 export '../blocks.dart';
-export '../value.dart';
 
 abstract class Storage {
   /// A stream of updates.
   Stream<Update> get updates;
 
   /// Gets the value. Used at startup.
-  Future<Value?> getValue();
+  Future<UpdatableBlock?> getValue();
 
   void setValue(Path<Block> path, Block value);
 
@@ -22,4 +20,4 @@ class Update {
 
   final Path<Block> path;
   final Block value;
-}*/
+}

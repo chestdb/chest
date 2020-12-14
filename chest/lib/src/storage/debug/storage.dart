@@ -1,9 +1,13 @@
-/*import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 
 import '../storage.dart';
 
 class DebugStorage implements Storage {
+  static Future<DebugStorage> open(String name) async {
+    return DebugStorage();
+  }
+
   DebugStorage() : updatesController = StreamController<Update>.broadcast() {
     // _sendEvents();
   }
@@ -12,20 +16,20 @@ class DebugStorage implements Storage {
   @override
   Stream<Update> get updates => updatesController.stream;
 
-  Future<Value?> getValue() async {
+  Future<UpdatableBlock?> getValue() async {
     return null;
   }
 
   Future<void> _sendEvents() async {
     await Future.delayed(Duration(milliseconds: 100));
     updatesController
-        .add(Update(Path.root(), DefaultBytesBlock(-1, utf8.encode('bar'))));
+        .add(Update(Path.root(), BytesBlock(-1, utf8.encode('bar'))));
     await Future.delayed(Duration(milliseconds: 100));
     updatesController
-        .add(Update(Path.root(), DefaultBytesBlock(-1, utf8.encode('baz'))));
+        .add(Update(Path.root(), BytesBlock(-1, utf8.encode('baz'))));
     await Future.delayed(Duration(milliseconds: 100));
     updatesController
-        .add(Update(Path.root(), DefaultBytesBlock(-1, utf8.encode('blub'))));
+        .add(Update(Path.root(), BytesBlock(-1, utf8.encode('blub'))));
   }
 
   @override
@@ -46,4 +50,3 @@ class DebugStorage implements Storage {
     throw UnimplementedError();
   }
 }
-*/
