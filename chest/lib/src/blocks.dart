@@ -59,7 +59,7 @@ abstract class MapBlock extends Block {
           entries.deeplyEquals(other.entries);
 
   @override
-  int get hashCode => hash2(typeCode, entries);
+  int get hashCode => hash2(typeCode, hash(entries));
 
   @override
   int compareTo(Block other) {
@@ -134,7 +134,7 @@ abstract class BytesBlock extends Block {
           typeCode == other.typeCode &&
           bytes.deeplyEquals(other.bytes);
 
-  int get hashCode => hash2(typeCode, bytes);
+  int get hashCode => hash2(typeCode, hash(bytes));
 
   @override
   int compareTo(Block other) {
@@ -306,7 +306,11 @@ class UpdatableBlock {
       final child = _updates.containsKey(key)
           ? _updates[key] ?? _throwInvalid(path)
           : UpdatableBlock(block[key] ?? _throwInvalid(path));
-      child.update(path, updatedBlock, createImplicitly: createImplicitly);
+      child.update(
+        path.withoutFirst(),
+        updatedBlock,
+        createImplicitly: createImplicitly,
+      );
       return;
     }
 

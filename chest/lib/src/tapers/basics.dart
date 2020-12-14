@@ -19,7 +19,7 @@ abstract class MapTaper<T> extends Taper<T> {
     if (data is! MapTapeData) {
       throw 'Expected MapTapeData, got ${data.runtimeType}';
     }
-    return fromMap(data.map);
+    return fromMap(data.map.cast<String, Object?>());
   }
 }
 
@@ -50,7 +50,8 @@ abstract class ClassTaper<T> extends MapTaper<T> {
   Map<Object?, Object?> toMap(T value) => toFields(value);
   T fromMap(Map<Object?, Object?> map) {
     if (map is! Map<String, Object?>) {
-      throw 'Expected class map to have String keys, but type is $map';
+      throw 'Expected class map to have String keys, but type is '
+          "${map.runtimeType}. Here's the value: $map";
     }
     return fromFields(map);
   }

@@ -104,6 +104,13 @@ class _Registry {
 
   /// Registers the [taper] for the [typeCode].
   void _registerSingle<T>(int typeCode, Taper<T> taper) {
+    if (inDebugMode) {
+      final previousTypeCode = taperToTypeCode(taper);
+      if (previousTypeCode != null) {
+        throw TaperRegisteredTwiceError(taper, previousTypeCode, typeCode);
+      }
+    }
+
     _tapersToTypeCodes[taper] = typeCode;
     _typeCodesToTapers[typeCode] = taper;
 
@@ -112,13 +119,6 @@ class _Registry {
     // never have to find them based on a value.
     if (taper.isLegacy) return;
 
-    if (inDebugMode) {
-      final previousTypeCode = taperToTypeCode(taper);
-      if (previousTypeCode != null) {
-        throw TaperRegisteredTwiceError(taper, previousTypeCode, typeCode);
-      }
-    }
-
     final type = _Type<T>(taper);
     _shortcutsIntoTheTree[T] ??= type;
     _typeTree.insert(type);
@@ -126,7 +126,7 @@ class _Registry {
 
   /// Registers multiple adapters.
   void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
-    if (!_isInitialized) throw RegisterCalledTwiceError();
+    if (_isInitialized) throw RegisterCalledTwiceError();
     _isInitialized = true;
 
     /// We don't call [_registerSingle] directly, but rather let the [Taper]
@@ -155,6 +155,9 @@ class _Registry {
     if (!type.matches(value)) {
       panic("Shortcut into the tree for ${value.runtimeType} is to a taper "
           "that's not for ${value.runtimeType}, but for ${type.type}.");
+    }
+    if (taper == _AnyTaper()) {
+      throw NoTaperForValueError(value);
     }
     if (!_debugIsSameType(value.runtimeType, type.type)) {
       print('Warning from Chest: We use a taper for type ${type.type} to '
@@ -196,7 +199,8 @@ class _Type<T> {
   Type get type => T;
   bool matches(Object? value) => value is T;
   bool isSupertypeOf(_Type<Object?> node) => node is _Type<T>;
-  A run<A>(A Function<T>() callback) => callback();
+  void addSubtypes(Iterable<_Type<Object?>> types) =>
+      subtypes.addAll(types.cast<_Type<T>>());
 
   /// Inserts a new value.
   ///
@@ -217,7 +221,7 @@ class _Type<T> {
         subtypes.where((it) => it.isSupertypeOf(newType)).toList();
     if (newTypeSubtypes.isNotEmpty) {
       subtypes.removeAll(newTypeSubtypes);
-      newType.subtypes.addAll(newTypeSubtypes);
+      newType.addSubtypes(newTypeSubtypes);
       subtypes.add(newType);
     } else if (newTypeSupertypes.isNotEmpty) {
       for (final supertype in newTypeSupertypes) {
@@ -271,7 +275,7 @@ class TaperRegisteredTwiceError extends ChestError {
   final int typeCode2;
 
   String toString() =>
-      'Taper $taper registered for two type codes ($typeCode1, $typeCode2).';
+      'Taper $taper registered for two type codes ($typeCode1 and $typeCode2).';
 }
 
 class NoTaperForValueError extends ChestError {

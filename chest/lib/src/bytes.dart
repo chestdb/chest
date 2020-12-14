@@ -288,7 +288,12 @@ extension BlockToObject on Block {
     TapeData data;
     Block this_ = this;
     if (this_ is MapBlock) {
-      data = MapTapeData(this_.entries.toMap());
+      data = MapTapeData(this_.entries
+          .map((entry) => MapEntry(
+                entry.key.toObject(),
+                entry.value.toObject(),
+              ))
+          .toMap());
     } else if (this_ is BytesBlock) {
       data = BytesTapeData(this_.bytes);
     } else {
@@ -297,11 +302,6 @@ extension BlockToObject on Block {
     return taper.fromData(data);
   }
 }
-
-// On Path:
-// Path<Block> serialize() {
-//   return Path(keys.map((it) => it.toBlock()).toList());
-// }
 
 int _typeCodeLength = 8;
 int _blockKindLength = 1;
