@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'api.dart';
 import 'blocks.dart';
+import 'bytes.dart';
+import 'storage/debug/storage.dart';
 import 'storage/storage.dart';
 import 'storage/vm/storage.dart';
 import 'tapers.dart';
@@ -13,27 +15,28 @@ class Chest<T> implements Ref<T> {
     required FutureOr<T> Function() ifNew,
   }) async {
     assert(tape.isInitialized);
-    if (_chests.containsKey(name)) {
-      final chest = _chests[name]!;
+    if (_openedChests.containsKey(name)) {
+      final chest = _openedChests[name]!;
       if (chest is! Chest<T>) {
         throw 'Chest with name $name is already opened and not of type $T.';
       }
       return chest;
     }
     // TODO: Conditionally use VmStorage or WebStorage.
-    final storage = await VmStorage.open(name); // DebugStorage
+    final storage = await DebugStorage.open(name); // DebugStorage
     var initialValue = await storage.getValue();
     if (initialValue == null) {
       final newValue = (await ifNew()).toBlock();
       storage.setValue(Path.root(), newValue);
       initialValue = UpdatableBlock(newValue);
     }
+    // TODO: Check that the content is indeed of type T.
     final chest = Chest<T>._(
       name: name,
       storage: storage,
       initialValue: initialValue,
     );
-    _chests[name] = chest;
+    _openedChests[name] = chest;
     return chest;
   }
 
@@ -67,10 +70,12 @@ class Chest<T> implements Ref<T> {
   }
 
   @override
-  Ref<R> child<R>(Object? key) => _FieldRef<R>(this, Path([key]));
+  Ref<R> child<R>(Object? key, {bool createImplicitly = false}) =>
+      _FieldRef<R>(this, Path([key]), createImplicitly);
 
   @override
-  set value(T value) => _setAt(Path.root(), value.toBlock());
+  set value(T value) =>
+      _setAt(Path.root(), value.toBlock(), createImplicitly: false);
   void _setAt(Path<Block> path, Block value, {required bool createImplicitly}) {
     _value.update(path, value, createImplicitly: createImplicitly);
     _valueChangedController.add(null);
@@ -79,11 +84,12 @@ class Chest<T> implements Ref<T> {
 
   @override
   T get value => _getAt(Path.root());
-  R _getAt<R>(Path<Block> path) => _value.getAt(path).toObject() as R;
+  R? _getAt<R>(Path<Block> path) => _value.getAt(path)?.toObject() as R;
 
   @override
-  Stream<T> watch() => _watchAt(Path.root());
-  Stream<R> _watchAt<R>(Path<Block> path) {
+  Stream<T?> watch() => _watchAt(Path.root());
+  Stream<R?> _watchAt<R>(Path<Block> path) {
+    // TODO(marcelgarus): Make [valueChanged] publish the path of the change and only deserialize value if the path applies.
     return _valueChanged.map((_) => _getAt<R>(path)).distinct();
   }
 }
@@ -93,7 +99,7 @@ abstract class Ref<T> {
   Ref<R> child<R>(Object? key, {bool createImplicitly = false});
   set value(T value);
   T get value;
-  Stream<T> watch();
+  Stream<T?> watch();
 }
 
 class _FieldRef<T> implements Ref<T> {
@@ -106,9 +112,16 @@ class _FieldRef<T> implements Ref<T> {
   Ref<R> child<R>(Object? key, {bool createImplicitly = false}) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]), createImplicitly);
 
-  set value(T value) => chest._setAt(path.serialize(), value.toBlock());
+  set value(T value) => chest._setAt(path.serialize(), value.toBlock(),
+      createImplicitly: createImplicitly);
   T get value => chest._getAt(path.serialize());
-  Stream<T> watch() => chest._watchAt(path.serialize());
+  Stream<T?> watch() => chest._watchAt(path.serialize());
 }
 
-final _chests = <String, Chest>{};
+final _openedChests = <String, Chest>{};
+
+extension on Path<Object?> {
+  Path<Block> serialize() {
+    return Path(keys.map((it) => it.toBlock()).toList());
+  }
+}
