@@ -92,12 +92,13 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [x] Handle errors gracefully
 - [x] Write docs on how it works in principle
 - [ ] Implement compaction
-- [ ] Support taper migration
 - [ ] Properly handle opening a chest in multiple isolates
+- [ ] cross-Isolate adapter registry?
+- [ ] Support taper migration
 - [ ] Support storing references
 - [ ] Support lazy chests
-- [ ] cross-Isolate adapter registry?
-- [ ] Suggest adapters
+- [ ] Make errors more beautiful
+  - [ ] Suggest tapers
 - [ ] Add cycle detection
   - [ ] during serialization
   - [ ] during deserialization
