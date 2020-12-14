@@ -49,7 +49,7 @@ users['jonas'].value = User(...); // Only saves Jonas.
 ```
 
 **Wait a minute. How does Chest know how to handle my types?**
-Chest comes with its own encoding called *tape*. Built-in types already have prepacked tapers (serializers for objects).
+Chest comes with its own encoding called *tape*. Built-in types already have built-in tapers (serializers for objects).
 You can annotate your types with `@tape` and let Chest generate tapers automatically:
 
 ```dart
