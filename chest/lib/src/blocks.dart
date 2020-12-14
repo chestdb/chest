@@ -92,16 +92,16 @@ abstract class MapBlock extends Block {
 
   @override
   String toString([int indentation = 0]) {
-    final buffer = StringBuffer()..writeln('MapBlock($typeCode, {');
+    final buffer = StringBuffer()..writeln('$typeCode@{');
     for (final entry in entries) {
       buffer
-        ..write(' ' * (indentation + 1))
+        ..write('  ' * (indentation + 1))
         ..write(entry.key.toString(indentation + 1))
         ..write(': ')
         ..write(entry.value.toString(indentation + 1))
-        ..writeln(',');
+        ..writeln();
     }
-    buffer..write(' ' * indentation)..write('})');
+    buffer..write('  ' * indentation)..write('}');
     return buffer.toString();
   }
 }
@@ -160,7 +160,7 @@ abstract class BytesBlock extends Block {
   }
 
   String toString([int indentation = 0]) {
-    return 'BytesBlock($typeCode, ${bytes.map((byte) => byte.toRadixString(16)).join(' ')})';
+    return '$typeCode@[${bytes.map((byte) => byte.toRadixString(16)).join(' ')}]';
   }
 }
 
