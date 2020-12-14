@@ -121,6 +121,7 @@ class _DefaultMapBlock extends MapBlock {
 ///
 /// While [MapBlock] is an internal node in the [Block] tree, this is a leaf
 /// node. It's the most basic abstraction over raw data.
+// TODO(marcelgarus): Ensure that the [bytes] are valid bytes.
 abstract class BytesBlock extends Block {
   factory BytesBlock(int typeCode, List<int> bytes) = _DefaultBytesBlock;
   const BytesBlock.noop();

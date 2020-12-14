@@ -2,6 +2,7 @@ import 'package:more/more.dart';
 
 import 'utils.dart';
 
+export 'tapers/basics.dart';
 export 'tapers/core.dart';
 export 'tapers/math.dart';
 export 'tapers/typed_data.dart';
