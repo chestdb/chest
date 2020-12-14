@@ -89,6 +89,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [x] Support watching (parts of) chests
 - [x] Properly handle multiple opens of the same Chest
 - [x] Revisit value access syntax
+- [x] Handle errors gracefully
 - [ ] Implement compaction
 - [ ] Support taper migration
 - [ ] Properly handle opening a chest in multiple isolates
@@ -98,7 +99,6 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [ ] Add cycle detection
   - [ ] during serialization
   - [ ] during deserialization
-- [ ] Handle errors gracefully
 - [ ] Write tapers for various common types
   - [x] dart:core
   - [x] dart:math
