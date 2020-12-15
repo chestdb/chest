@@ -1,16 +1,10 @@
-import 'dart:convert';
-import 'dart:developer';
-import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
 
 import '../../bytes.dart';
-import '../../compress.dart';
-import '../../utils.dart';
 import '../storage.dart';
 import 'file.dart';
 import 'message.dart';
-import 'storage.dart';
 
 /// The [VmBackend] is responsible for managing access to a `.chest` file.
 ///
@@ -42,10 +36,9 @@ class VmBackend {
     _registerServiceMethods();
   }
 
-  final SyncFile _file;
+  SyncFile _file;
   final void Function(Event event) sendEvent;
   final void Function() dispose;
-  late int _numberOfUpdates;
 
   Future<void> _handleAction(Action action) async {
     if (action is GetValueAction) {
@@ -70,7 +63,6 @@ class VmBackend {
     final version = _file.readInt();
     if (version > 0) throw 'Version too big: $version.';
 
-    _numberOfUpdates = 0;
     UpdatableBlock? value;
 
     while (_file.position() < _file.length()) {
@@ -80,7 +72,6 @@ class VmBackend {
         break;
       }
 
-      _numberOfUpdates++;
       final pathLength = _file.readInt();
       final segments = <Block>[];
       for (var i = 0; i < pathLength; i++) {
@@ -107,11 +98,9 @@ class VmBackend {
   }
 
   void _setValue(Path<Block> path, Block value) {
-    final bytes = value.toBytes();
     if (path.isRoot) {
-      _file
-        ..clear()
-        ..writeInt(0); // version
+      _replaceRootValue(value);
+      return;
     }
     final start = _file.length();
     _file
@@ -125,6 +114,7 @@ class VmBackend {
         ..writeInt(bytes.length)
         ..writeBytes(bytes);
     }
+    final bytes = value.toBytes();
     _file
       ..writeInt(bytes.length)
       ..writeBytes(bytes)
@@ -133,23 +123,40 @@ class VmBackend {
       ..writeByte(1) // make transaction valid
       ..flush();
     // TODO: Broadcast the value.
+    print('Updated value.');
 
     // Decide whether to compact.
-    _file.goTo(8 + 1 + 8);
+    _file.goTo(8 /*version*/ + 1 /*validity*/ + 8 /*path length (0)*/);
     final baseValueSize = _file.readInt();
-    final shouldCompact = _numberOfUpdates / baseValueSize > 0.002;
-    if (shouldCompact) {
-      final name = _file.path;
-      final compacted = _getValue()!.getAt(Path.root()).toBytes();
-      final newFile = SyncFile('$name.compacted');
-      newFile
-        ..writeBytes(compacted)
-        ..flush()
-        ..close();
-      // TODO: Replace the old file.
-      // _file.delete();
-      // newFile.renameTo(name);
+    if (_file.length() / baseValueSize > 1.4) {
+      _compact();
     }
+  }
+
+  void _compact() {
+    print('Compacting...');
+    final value = _getValue();
+    if (value == null) panic('Attempted to compact, but value is null.');
+    _replaceRootValue(value.getAtRoot());
+  }
+
+  void _replaceRootValue(Block newValue) {
+    final name = _file.path;
+    // This is expensive.
+    final bytes = newValue.toBytes();
+    final newFile = SyncFile('$name.compacted')
+      ..clear()
+      ..writeInt(0) // version
+      ..writeByte(1) // validity bit
+      ..writeInt(0) // path has length zero (this is the root object)
+      ..writeInt(bytes.length)
+      ..writeBytes(bytes)
+      ..flush();
+
+    // Replace the old file.
+    _file.delete();
+    newFile.renameTo(name);
+    _file = newFile;
   }
 
   void _flush() {
