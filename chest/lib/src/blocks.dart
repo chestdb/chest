@@ -248,7 +248,7 @@ class UpdatableBlock {
   bool get _hasUpdates => _updates.isNotEmpty;
 
   Block? getAt(Path<Block> path) {
-    if (path.isRoot) return _getAll();
+    if (path.isRoot) return getAtRoot();
 
     final firstKey = path.firstKey;
     if (_updates.containsKey(firstKey)) {
@@ -265,7 +265,7 @@ class UpdatableBlock {
   }
 
   /// Returns this block with all updates applied.
-  Block _getAll() {
+  Block getAtRoot() {
     final block = _block;
     if (!_hasUpdates) return block;
     if (block is! MapBlock) {
@@ -276,7 +276,7 @@ class UpdatableBlock {
       if (block == null) {
         map.remove(key);
       } else {
-        map[key] = block._getAll();
+        map[key] = block.getAtRoot();
       }
     });
     return MapBlock(_block.typeCode, map);
