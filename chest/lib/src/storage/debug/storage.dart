@@ -33,9 +33,8 @@ class DebugStorage implements Storage {
   }
 
   @override
-  void setValue(path, Block value) {
-    print('Setting value to $value.');
-    updatesController.add(Update(Path.root(), value));
+  void setValue(Path<Block> path, Block value) {
+    updatesController.add(Update(path, value));
   }
 
   @override
