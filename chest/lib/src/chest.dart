@@ -23,7 +23,7 @@ class Chest<T> implements Ref<T> {
       return chest;
     }
     // TODO: Conditionally use VmStorage or WebStorage.
-    final storage = await DebugStorage.open(name); // DebugStorage
+    final storage = await VmStorage.open(name);
     var initialValue = await storage.getValue();
     if (initialValue == null) {
       final newValue = (await ifNew()).toBlock();
