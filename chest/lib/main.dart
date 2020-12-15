@@ -19,14 +19,15 @@ void main() async {
   // foo.pet.watch().handleError((error) {
   //   print('Error. Value is ${foo.value}.');
   // }).forEach((it) => print('Pet is now $it.'));
-  // while (true) {
-  // await Future.delayed(Duration(seconds: 5));
-  // Increase Pet's name
-  final petName = foo.pet.name.value;
-  foo.pet.name.value = '${int.parse(petName) + 1}';
-  print(foo.value);
-  print(foo.pet.value);
-  // }
+  while (true) {
+    await Future.delayed(Duration(seconds: 10));
+    // Increase Pet's name.
+    final petName = foo.pet.name.value;
+    final newName = (int.parse(petName) + 1).toString();
+    print('Renaming pet from $petName to $newName');
+    foo.pet.name.value = newName;
+    print(foo.value);
+  }
   await foo.close();
 }
 
