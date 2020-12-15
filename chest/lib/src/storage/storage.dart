@@ -1,6 +1,7 @@
 import '../blocks.dart';
 
 export '../blocks.dart';
+export '../utils.dart';
 
 abstract class Storage {
   /// A stream of updates.
