@@ -1,7 +1,7 @@
-/*import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 
 import '../../bytes.dart';
@@ -62,7 +62,7 @@ class VmBackend {
     }
   }
 
-  Value? _getValue() {
+  UpdatableBlock? _getValue() {
     if (_file.length() == 0) {
       return null;
     }
@@ -70,8 +70,8 @@ class VmBackend {
     final version = _file.readInt();
     if (version > 0) throw 'Version too big: $version.';
 
-    Value? value;
     _numberOfUpdates = 0;
+    UpdatableBlock? value;
 
     while (_file.position() < _file.length()) {
       final validity = _file.readByte();
@@ -98,9 +98,9 @@ class VmBackend {
 
       if (value == null) {
         if (!path.isRoot) throw 'First update was not for root.';
-        value = Value(valueBlock);
+        value = UpdatableBlock(valueBlock);
       } else {
-        value.update(path, valueBlock);
+        value.update(path, valueBlock, createImplicitly: true);
       }
     }
     return value;
@@ -171,4 +171,3 @@ class VmBackend {
     // });
   }
 }
-*/

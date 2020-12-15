@@ -1,4 +1,4 @@
-/*import '../storage.dart';
+import '../storage.dart';
 
 abstract class Action {}
 
@@ -24,11 +24,11 @@ abstract class Event {}
 class WholeValueEvent extends Event {
   WholeValueEvent(this.value);
 
-  final Value? value;
+  final UpdatableBlock? value;
 }
 
 class FlushedEvent extends Event {
   FlushedEvent(this.uuid);
 
   final String uuid;
-}*/
+}

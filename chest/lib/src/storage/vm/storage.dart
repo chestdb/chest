@@ -1,4 +1,4 @@
-/*import 'dart:async';
+import 'dart:async';
 import 'dart:isolate';
 import 'dart:math';
 
@@ -70,7 +70,7 @@ class VmStorage implements Storage {
   final void Function(Action action) sendAction;
   final void Function() dispose;
 
-  Future<Value?> getValue() async {
+  Future<UpdatableBlock?> getValue() async {
     sendAction(GetValueAction());
     final event = await events.waitFor<WholeValueEvent>();
     return event.value;
@@ -89,7 +89,6 @@ class VmStorage implements Storage {
 
   @override
   Future<void> close() async {
-    // sendAction(CloseAction(uuid));
     dispose();
   }
 }
@@ -141,4 +140,4 @@ String _randomUuid() {
     buffer.write(chars[random.nextInt(chars.length)]);
   }
   return buffer.toString();
-}*/
+}
