@@ -289,7 +289,7 @@ class UpdatableBlock {
   }) {
     if (path.isRoot) {
       if (updatedBlock == null) throw TriedToDeleteRootValueError();
-      // If the updatedBlock replaces the current block, all updates become
+      // The updatedBlock replaces the current block, so all updates become
       // irrelevant.
       _block = updatedBlock;
       _updates.clear();
@@ -304,9 +304,9 @@ class UpdatableBlock {
       /// Delegate the request to a child. Throw if it doesn't exist – even if
       /// [createImplicitly] is set, that doesn't create the whole path to the
       /// child, only the last entry.
-      final child = _updates.containsKey(key)
-          ? _updates[key] ?? _throwInvalid(path)
-          : UpdatableBlock(block[key] ?? _throwInvalid(path));
+      final child = _updates.putIfAbsent(key, () {
+        return UpdatableBlock(block[key] ?? _throwInvalid(path));
+      }) ?? _throwInvalid(path);
       child.update(
         path.withoutFirst(),
         updatedBlock,
@@ -323,13 +323,20 @@ class UpdatableBlock {
       return;
     }
 
-    if (!createImplicitly && (_updates[key] ?? block[key]) == null) {
+    final previousValue =
+        _updates.containsKey(key) ? _updates[key] : block[key];
+    if (!createImplicitly && previousValue == null) {
       _throwInvalid(path);
     }
     _updates[key] = UpdatableBlock(updatedBlock);
   }
 
   Never _throwInvalid(Path<Block> path) => throw InvalidPathException(path);
+
+  @override
+  String toString() {
+    return 'UpdatableBlock(base: $_block, updates: $_updates)';
+  }
 }
 
 /// Indicates that you attempted to perform an operation with an invalid path.
