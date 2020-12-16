@@ -123,7 +123,6 @@ class VmBackend {
       ..writeByte(1) // make transaction valid
       ..flush();
     // TODO: Broadcast the value.
-    print('Updated value.');
 
     // Decide whether to compact.
     _file.goTo(8 /*version*/ + 1 /*validity*/ + 8 /*path length (0)*/);
