@@ -91,7 +91,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [x] Revisit value access syntax
 - [x] Handle errors gracefully
 - [x] Write docs on how it works in principle
-- [ ] Implement compaction
+- [x] Implement compaction
 - [ ] Properly handle opening a chest in multiple isolates
 - [ ] cross-Isolate adapter registry?
 - [ ] Support taper migration
