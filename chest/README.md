@@ -96,6 +96,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [ ] Support storing references
 - [ ] Properly handle opening a chest in multiple isolates
 - [ ] cross-Isolate adapter registry?
+- [ ] Use more efficient `TransferableTypedData`
 - [ ] Support lazy chests
 - [ ] Make errors more beautiful
   - [ ] Suggest tapers
