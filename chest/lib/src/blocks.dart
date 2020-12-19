@@ -247,22 +247,23 @@ class Path<T> {
 /// there's a difference between the `Map` having no value for a key and the
 /// value being `null`.
 class UpdatableBlock {
-  UpdatableBlock(this._block);
+  UpdatableBlock(this.block, [Map<Block, UpdatableBlock?>? updates])
+      : this.updates = updates ?? {};
 
-  Block _block;
-  final _updates = <Block, UpdatableBlock?>{};
-  bool get _hasUpdates => _updates.isNotEmpty;
+  Block block;
+  final Map<Block, UpdatableBlock?> updates;
+  bool get _hasUpdates => updates.isNotEmpty;
 
   Block? getAt(Path<Block> path) {
     if (path.isRoot) return getAtRoot();
 
     final firstKey = path.firstKey;
-    if (_updates.containsKey(firstKey)) {
-      return _updates[firstKey]?.getAt(path.withoutFirst());
+    if (updates.containsKey(firstKey)) {
+      return updates[firstKey]?.getAt(path.withoutFirst());
     }
 
     final keys = List.of(path.keys);
-    var value = _block;
+    var value = block;
     while (!keys.isEmpty) {
       if (value is! MapBlock) _throwInvalid(path);
       value = value[keys.removeAt(0)] ?? _throwInvalid(path);
@@ -272,20 +273,20 @@ class UpdatableBlock {
 
   /// Returns this block with all updates applied.
   Block getAtRoot() {
-    final block = _block;
+    final block = this.block;
     if (!_hasUpdates) return block;
     if (block is! MapBlock) {
       panic('UpdatableBlock has updates, although its not a MapBlock.');
     }
     final map = block.entries.toMap();
-    _updates.forEach((key, block) {
+    updates.forEach((key, block) {
       if (block == null) {
         map.remove(key);
       } else {
         map[key] = block.getAtRoot();
       }
     });
-    return MapBlock(_block.typeCode, map);
+    return MapBlock(block.typeCode, map);
   }
 
   void update(
@@ -297,12 +298,12 @@ class UpdatableBlock {
       if (updatedBlock == null) throw TriedToDeleteRootValueError();
       // The updatedBlock replaces the current block, so all updates become
       // irrelevant.
-      _block = updatedBlock;
-      _updates.clear();
+      this.block = updatedBlock;
+      updates.clear();
       return;
     }
 
-    final block = _block;
+    final block = this.block;
     if (block is! MapBlock) _throwInvalid(path);
     final key = path.firstKey;
 
@@ -310,7 +311,7 @@ class UpdatableBlock {
       /// Delegate the request to a child. Throw if it doesn't exist – even if
       /// [createImplicitly] is set, that doesn't create the whole path to the
       /// child, only the last entry.
-      final child = _updates.putIfAbsent(key, () {
+      final child = updates.putIfAbsent(key, () {
             return UpdatableBlock(block[key] ?? _throwInvalid(path));
           }) ??
           _throwInvalid(path);
@@ -326,23 +327,22 @@ class UpdatableBlock {
 
     if (updatedBlock == null) {
       // Delete a key.
-      _updates[key] = null;
+      updates[key] = null;
       return;
     }
 
-    final previousValue =
-        _updates.containsKey(key) ? _updates[key] : block[key];
+    final previousValue = updates.containsKey(key) ? updates[key] : block[key];
     if (!createImplicitly && previousValue == null) {
       _throwInvalid(path);
     }
-    _updates[key] = UpdatableBlock(updatedBlock);
+    updates[key] = UpdatableBlock(updatedBlock);
   }
 
   Never _throwInvalid(Path<Block> path) => throw InvalidPathException(path);
 
   @override
   String toString() {
-    return 'UpdatableBlock(base: $_block, updates: $_updates)';
+    return 'UpdatableBlock(base: $block, updates: $updates)';
   }
 }
 
