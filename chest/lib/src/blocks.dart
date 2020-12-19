@@ -188,7 +188,12 @@ class Path<T> {
 
   T get firstKey => keys.first;
   Path<T> withoutFirst() => Path(keys.skip(1).toList());
-  bool startsWith(Block other) => !isRoot && keys.first == other;
+  bool startsWith(Path<T> other) {
+    return other.isRoot ||
+        !isRoot &&
+            firstKey == other.firstKey &&
+            withoutFirst().startsWith(other.withoutFirst());
+  }
 
   @override
   String toString() => isRoot ? '<root>' : keys.join('/');

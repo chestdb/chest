@@ -48,7 +48,7 @@ class Chest<T> implements Ref<T> {
         _value = initialValue {
     _storage.updates.listen((update) {
       _value.update(update.path, update.value, createImplicitly: true);
-      _valueChangedController.add(null);
+      _valueChangedController.add(Path.root());
     });
   }
 
@@ -59,8 +59,8 @@ class Chest<T> implements Ref<T> {
   final Storage _storage;
 
   /// A stream that emits an event every time the value changes.
-  final _valueChangedController = StreamController<void>.broadcast();
-  Stream<void> get _valueChanged => _valueChangedController.stream;
+  final _valueChangedController = StreamController<Path<Block>>.broadcast();
+  Stream<Path<Block>> get _valueChanged => _valueChangedController.stream;
 
   Future<void> flush() => _storage.flush();
   Future<void> close() async {
@@ -78,7 +78,7 @@ class Chest<T> implements Ref<T> {
       _setAt(Path.root(), value.toBlock(), createImplicitly: false);
   void _setAt(Path<Block> path, Block value, {required bool createImplicitly}) {
     _value.update(path, value, createImplicitly: createImplicitly);
-    _valueChangedController.add(null);
+    _valueChangedController.add(path);
     _storage.setValue(path, value);
   }
 
@@ -89,8 +89,13 @@ class Chest<T> implements Ref<T> {
   @override
   Stream<T?> watch() => _watchAt(Path.root());
   Stream<R?> _watchAt<R>(Path<Block> path) {
-    // TODO(marcelgarus): Make [valueChanged] publish the path of the change and only deserialize value if the path applies.
-    return _valueChanged.map((_) => _getAt<R>(path)).distinct();
+    return _valueChanged
+        .where((changedPath) {
+          // Only deserialize on those events that can the value.
+          return path.startsWith(path) || path.startsWith(changedPath);
+        })
+        .map((_) => _getAt<R>(path))
+        .distinct();
   }
 }
 
