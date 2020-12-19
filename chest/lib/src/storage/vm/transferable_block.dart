@@ -37,8 +37,17 @@ extension BlockToTransferable on Block {
   TransferableBlock transferable() => TransferableBlock(this);
 }
 
+extension PathToTransferable on Path<Block> {
+  Path<TransferableBlock> transferable() =>
+      Path<TransferableBlock>(keys.map((key) => key.transferable()).toList());
+}
+
 class TransferableUpdatableBlock {
-  TransferableUpdatableBlock(this.block, this.updates);
+  TransferableUpdatableBlock(UpdatableBlock updatableBlock)
+      : this.block = updatableBlock.block.transferable(),
+        this.updates = updatableBlock.updates.map((key, block) {
+          return MapEntry(key.transferable(), block?.transferable());
+        });
 
   final TransferableBlock block;
   final Map<TransferableBlock, TransferableUpdatableBlock?> updates;
@@ -46,18 +55,13 @@ class TransferableUpdatableBlock {
   UpdatableBlock materialize() {
     return UpdatableBlock(
       block.materialize(),
-      updates.map((path, block) {
-        return MapEntry(path.materialize(), block?.materialize());
+      updates.map((key, block) {
+        return MapEntry(key.materialize(), block?.materialize());
       }),
     );
   }
 }
 
 extension UpdatableBlockToTransferable on UpdatableBlock {
-  TransferableUpdatableBlock transferable() => TransferableUpdatableBlock(
-        block.transferable(),
-        updates.map((path, block) {
-          return MapEntry(path.transferable(), block?.transferable());
-        }),
-      );
+  TransferableUpdatableBlock transferable() => TransferableUpdatableBlock(this);
 }

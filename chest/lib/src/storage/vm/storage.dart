@@ -72,7 +72,7 @@ class VmStorage implements Storage {
 
   Future<UpdatableBlock?> getValue() async {
     sendAction(GetValueAction());
-    final event = await events.waitFor<WholeValueEvent>();
+    final event = await events.waitFor<ValueEvent>();
     return event.value?.materialize();
   }
 
@@ -84,13 +84,13 @@ class VmStorage implements Storage {
   Future<void> flush() async {
     final uuid = _randomUuid();
     sendAction(FlushAction(uuid));
-    await events.waitFor<FlushedEvent>((event) => event.uuid == uuid);
+    await events.waitFor<FlushedEvent>(withUuid(uuid));
   }
 
   Future<void> compact() async {
     final uuid = _randomUuid();
     sendAction(CompactAction(uuid));
-    await events.waitFor<CompactedEvent>((event) => event.uuid == uuid);
+    await events.waitFor<CompactedEvent>(withUuid(uuid));
   }
 
   @override
@@ -147,3 +147,6 @@ String _randomUuid() {
   }
   return buffer.toString();
 }
+
+bool Function(EventWithUuid event) withUuid(String uuid) =>
+    (EventWithUuid event) => event.uuid == uuid;

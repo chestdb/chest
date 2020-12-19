@@ -28,7 +28,7 @@ class VmBackend {
 
   Future<void> _handleAction(Action action) async {
     if (action is GetValueAction) {
-      sendEvent(WholeValueEvent(_getValue()?.transferable()));
+      sendEvent(ValueEvent(_getValue()?.transferable()));
     } else if (action is SetValueAction) {
       _setValue(action.path, action.value);
     } else if (action is FlushAction) {
@@ -44,15 +44,22 @@ class VmBackend {
     }
   }
 
-  UpdatableBlock? _getValue() {
+  Iterable<ChestFileUpdate> _getUpdates() sync* {
     final header = _file.readHeader();
-    if (header == null) return null;
-
+    if (header == null) return;
     if (header.version > currentFileLayoutVersion) {
       // TODO: Better error.
       throw 'Version too big: ${header.version}.';
     }
 
+    while (true) {
+      final update = _file.readUpdate();
+      if (update == null) break;
+      yield update;
+    }
+  }
+
+  UpdatableBlock? _getValue() {
     UpdatableBlock? value;
     while (true) {
       final update = _file.readUpdate();
@@ -84,10 +91,9 @@ class VmBackend {
 
   void _compact() {
     print('Compacting...');
-    _replaceRootValue(
-      _getValue()?.getAtRoot() ??
-          panic('Attempted to compact, but value is null.'),
-    );
+    final value = _getValue();
+    if (value == null) panic('Attempted to compact, but value is null.');
+    _replaceRootValue(value.getAtRoot());
   }
 
   void _replaceRootValue(Block newValue) {
