@@ -1,51 +1,27 @@
 import 'dart:async';
-import 'dart:convert';
 
 import '../storage.dart';
 
 class DebugStorage implements Storage {
-  static Future<DebugStorage> open(String name) async {
-    return DebugStorage();
-  }
+  DebugStorage(this._value);
 
-  DebugStorage() : updatesController = StreamController<Update>.broadcast() {
-    // _sendEvents();
-  }
+  final UpdatableBlock _value;
+  final _controller = StreamController<Update>.broadcast();
 
-  final StreamController<Update> updatesController;
   @override
-  Stream<Update> get updates => updatesController.stream;
+  Stream<Update> get updates => _controller.stream;
 
-  Future<UpdatableBlock?> getValue() async {
-    return null;
-  }
-
-  Future<void> _sendEvents() async {
-    await Future.delayed(Duration(milliseconds: 100));
-    updatesController
-        .add(Update(Path.root(), BytesBlock(-1, utf8.encode('bar'))));
-    await Future.delayed(Duration(milliseconds: 100));
-    updatesController
-        .add(Update(Path.root(), BytesBlock(-1, utf8.encode('baz'))));
-    await Future.delayed(Duration(milliseconds: 100));
-    updatesController
-        .add(Update(Path.root(), BytesBlock(-1, utf8.encode('blub'))));
-  }
+  Future<UpdatableBlock?> getValue() async => _value;
 
   @override
   void setValue(Path<Block> path, Block value) {
-    updatesController.add(Update(path, value));
+    _value.update(path, value, createImplicitly: true);
+    _controller.add(Update(path, value));
   }
 
   @override
-  Future<void> flush() {
-    // TODO: implement flush
-    throw UnimplementedError();
-  }
+  Future<void> flush() async {}
 
   @override
-  Future<void> close() {
-    // TODO: implement close
-    throw UnimplementedError();
-  }
+  Future<void> close() async {}
 }
