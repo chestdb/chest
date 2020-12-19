@@ -87,6 +87,10 @@ By the way: If you open a chest multiple times, the same instance is reused. And
 - [x] Handle errors gracefully
 - [x] Write docs on how it works in principle
 - [x] Implement compaction
+- [x] Develop Brand & Logo
+  - [x] Color palette
+  - [x] Font
+  - [x] Logo
 - [ ] Support taper migration
 - [ ] Support storing references
 - [ ] Properly handle opening a chest in multiple isolates
@@ -135,7 +139,3 @@ By the way: If you open a chest multiple times, the same instance is reused. And
     - [ ] File layout: Base data vs deltas
     - [ ] Trigger manual compaction
 - [ ] Insert events into the Dart Debugging Timeline
-- [ ] Develop Brand & Logo
-  - [x] Color palette
-  - [x] Font
-  - [ ] Logo
