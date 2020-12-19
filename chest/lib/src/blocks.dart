@@ -311,8 +311,9 @@ class UpdatableBlock {
       /// [createImplicitly] is set, that doesn't create the whole path to the
       /// child, only the last entry.
       final child = _updates.putIfAbsent(key, () {
-        return UpdatableBlock(block[key] ?? _throwInvalid(path));
-      }) ?? _throwInvalid(path);
+            return UpdatableBlock(block[key] ?? _throwInvalid(path));
+          }) ??
+          _throwInvalid(path);
       child.update(
         path.withoutFirst(),
         updatedBlock,
