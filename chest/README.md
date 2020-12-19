@@ -2,19 +2,11 @@
 
 ---
 
-<h2 align="center">
-An in-memory database with amazing developer experience.
-</h2>
+<center>
+<img src="../logo.svg" width="300px" alt="Chest" />
 
-<!-- ❤️🧽🧼🌌 -->
-
-<!-- - ❤️ **Amazing developer experience.** Just like you can inspect your code with Dart's DevTools, you can inspect, debug, and edit your database with ChestTools live in your browser. -->
-- 🌌 **Scalable.** Chest can store anything from single `int`s to huge collections.
-- 🎈 **Lightweight.** Chest is written in pure Dart and has no native dependencies. That also means it works on mobile and desktop.
-<!-- - 🔒 **Secure.** Chest has encryption built-in. -->
-<!-- - ⚡ **Fast.** Chest is fast. Unlike most other in-memory databases, it also minimizes startup-time. And if you want to tweak performance, profiling and statistics are built-in. -->
-
-## Chest's philosophy
+## An in-memory database with amazing developer experience
+</center>
 
 **What's a database?**
 In its purest form, it's just a place to persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called *chests*.
@@ -62,10 +54,11 @@ class Fruit {
 
 <!-- Tapers for types from other packages are also available to plug and play – for example, for tuple, Flutter, and TODO. -->
 
-<!-- **In like it's going to eat an awful lot of RAM.**
-True. If your app stores homungous amounts of data, Chest is probably not the right fit for you.
-Chest tries to mitigate this issue by storing the data not as actual Dart objects, but as a dense byte representation.
-Values are only decoded on demand. -->
+## Other perks
+
+- ❤️ **Amazing developer experience.** Just like you can inspect your code with Dart's DevTools, you can inspect, debug, and edit your database with ChestTools live in your browser.
+- 🎈 **Lightweight.** Chest is written in pure Dart and has no native dependencies. That also means it works on mobile and desktop.
+<!-- - ⚡ **Fast.** Chest is fast. Unlike most other in-memory databases, it also minimizes startup-time. And if you want to tweak performance, profiling and statistics are built-in. -->
 
 ## How does it work?
 
