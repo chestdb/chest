@@ -73,7 +73,7 @@ class VmStorage implements Storage {
   Future<UpdatableBlock?> getValue() async {
     sendAction(GetValueAction());
     final event = await events.waitFor<WholeValueEvent>();
-    return event.value;
+    return event.value?.materialize();
   }
 
   void setValue(Path<Block> path, Block value) {

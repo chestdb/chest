@@ -1,5 +1,7 @@
 import '../storage.dart';
+import 'transferable_block.dart';
 
+/// [Action]s are sent from the user's isolate to the chest backend isolate.
 abstract class Action {}
 
 class GetValueAction extends Action {}
@@ -19,12 +21,13 @@ class FlushAction extends Action {
 
 class CloseAction extends Action {}
 
+/// [Event]s are sent from the chest backend isolate the the user's isolate.
 abstract class Event {}
 
 class WholeValueEvent extends Event {
   WholeValueEvent(this.value);
 
-  final UpdatableBlock? value;
+  final TransferableUpdatableBlock? value;
 }
 
 class FlushedEvent extends Event {

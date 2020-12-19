@@ -28,7 +28,7 @@ class VmBackend {
 
   Future<void> _handleAction(Action action) async {
     if (action is GetValueAction) {
-      sendEvent(WholeValueEvent(_getValue()));
+      sendEvent(WholeValueEvent(_getValue()?.transferable()));
     } else if (action is SetValueAction) {
       _setValue(action.path, action.value);
     } else if (action is FlushAction) {

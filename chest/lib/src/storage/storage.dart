@@ -1,6 +1,7 @@
 import '../blocks.dart';
 
 export '../blocks.dart';
+export '../bytes.dart';
 export '../utils.dart';
 
 abstract class Storage {
