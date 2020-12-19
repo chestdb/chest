@@ -20,8 +20,8 @@ class SyncFile {
   late Uint8List _intList;
 
   void _open(String path) {
-    // TODO: Think about while file lock is appropriate.
-    _file = File(path).openSync(mode: FileMode.append);
+    _file = File(path).openSync(mode: FileMode.append)
+      ..lockSync(FileLock.blockingExclusive);
   }
 
   void delete() {
@@ -31,7 +31,9 @@ class SyncFile {
   }
 
   void close() {
-    _file?.closeSync();
+    _file
+      ?..unlockSync()
+      ..closeSync();
     _file = null;
   }
 
