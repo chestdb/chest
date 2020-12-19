@@ -64,7 +64,9 @@ class Chest<T> implements Ref<T> {
 
   Future<void> flush() => _storage.flush();
   Future<void> close() async {
-    // TODO: Dispose value.
+    // Let the value be garbage collected by replacing its reference to the huge
+    // byte sections.
+    _value.update(Path.root(), MapBlock(0, {}), createImplicitly: false);
     _valueChangedController.close();
     await _storage.close();
   }
