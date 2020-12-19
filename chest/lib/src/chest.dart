@@ -63,6 +63,7 @@ class Chest<T> implements Ref<T> {
   Stream<Path<Block>> get _valueChanged => _valueChangedController.stream;
 
   Future<void> flush() => _storage.flush();
+  Future<void> compact() => _storage.compact();
   Future<void> close() async {
     // Let the value be garbage collected by replacing its reference to the huge
     // byte sections.

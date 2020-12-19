@@ -14,6 +14,7 @@ abstract class Storage {
   void setValue(Path<Block> path, Block value);
 
   Future<void> flush();
+  Future<void> compact();
   Future<void> close();
 }
 

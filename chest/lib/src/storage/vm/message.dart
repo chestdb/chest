@@ -19,6 +19,12 @@ class FlushAction extends Action {
   final String uuid;
 }
 
+class CompactAction extends Action {
+  CompactAction(this.uuid);
+
+  final String uuid;
+}
+
 class CloseAction extends Action {}
 
 /// [Event]s are sent from the chest backend isolate the the user's isolate.
@@ -32,6 +38,12 @@ class WholeValueEvent extends Event {
 
 class FlushedEvent extends Event {
   FlushedEvent(this.uuid);
+
+  final String uuid;
+}
+
+class CompactedEvent extends Event {
+  CompactedEvent(this.uuid);
 
   final String uuid;
 }

@@ -34,6 +34,9 @@ class VmBackend {
     } else if (action is FlushAction) {
       _flush();
       sendEvent(FlushedEvent(action.uuid));
+    } else if (action is CompactAction) {
+      _compact();
+      sendEvent(CompactedEvent(action.uuid));
     } else if (action is CloseAction) {
       _close();
     } else {

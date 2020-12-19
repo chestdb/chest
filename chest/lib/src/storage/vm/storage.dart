@@ -87,6 +87,12 @@ class VmStorage implements Storage {
     await events.waitFor<FlushedEvent>((event) => event.uuid == uuid);
   }
 
+  Future<void> compact() async {
+    final uuid = _randomUuid();
+    sendAction(CompactAction(uuid));
+    await events.waitFor<CompactedEvent>((event) => event.uuid == uuid);
+  }
+
   @override
   Future<void> close() async {
     dispose();

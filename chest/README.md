@@ -92,6 +92,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
   - [x] Font
   - [x] Logo
 - [x] Use more efficient `TransferableTypedData`
+- [x] Support manually compacting chests
 - [ ] Support taper migration
 - [ ] Support storing references
 - [ ] Properly handle opening a chest in multiple isolates (blocked by https://github.com/dart-lang/sdk/issues/44495)

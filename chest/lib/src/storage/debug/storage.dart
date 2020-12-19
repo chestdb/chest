@@ -23,5 +23,8 @@ class DebugStorage implements Storage {
   Future<void> flush() async {}
 
   @override
+  Future<void> compact() async {}
+
+  @override
   Future<void> close() async {}
 }
