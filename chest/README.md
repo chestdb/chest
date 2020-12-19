@@ -91,11 +91,11 @@ By the way: If you open a chest multiple times, the same instance is reused. And
   - [x] Color palette
   - [x] Font
   - [x] Logo
+- [x] Use more efficient `TransferableTypedData`
 - [ ] Support taper migration
 - [ ] Support storing references
 - [ ] Properly handle opening a chest in multiple isolates (blocked by https://github.com/dart-lang/sdk/issues/44495)
 - [ ] cross-Isolate adapter registry? (blocked by https://github.com/dart-lang/sdk/issues/44495)
-- [ ] Use more efficient `TransferableTypedData`
 - [ ] Support lazy chests
 - [ ] Make errors more beautiful
   - [ ] Suggest tapers
