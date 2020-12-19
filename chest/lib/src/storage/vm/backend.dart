@@ -13,7 +13,6 @@ import 'message.dart';
 ///
 /// ## File layout
 ///
-/// TODO: Compress bytes.
 /// | version | updates |
 /// | 8 B     | ...     |
 ///
