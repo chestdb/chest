@@ -98,8 +98,9 @@ class VmBackend {
       ..appendUpdate(ChestFileUpdate(Path.root(), newValue));
 
     // Replace the old file.
+    final path = _file.path;
     _file.delete();
-    newFile.renameTo(_file.path);
+    newFile.renameTo(path);
     _file = newFile;
   }
 
