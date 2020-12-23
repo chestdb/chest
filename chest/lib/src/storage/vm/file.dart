@@ -145,6 +145,7 @@ class SyncFile {
   late Uint8List _intList;
 
   void _open(String path) {
+    // TODO: Throw if file is already opened and locked.
     _file = File(path).openSync(mode: FileMode.append)
       ..lockSync(FileLock.blockingExclusive);
   }

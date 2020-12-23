@@ -44,6 +44,7 @@ class Chest<T> implements Ref<T> {
     return chest;
   }
 
+  // TODO: Support mocking for boxes that are closed and then re-opened.
   static void mock<T>(String name, T value) {
     if (_openedChests.containsKey(name)) {
       throw 'Called mock, but chest already mocked or opened.';

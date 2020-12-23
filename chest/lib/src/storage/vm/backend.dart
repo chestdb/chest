@@ -85,6 +85,7 @@ class VmBackend {
     }
   }
 
+  // TODO: Use the `.chest.compacted` file if the normal one doesn't exist.
   void _compact() {
     final value = _getValue();
     if (value == null) panic('Attempted to compact, but value is null.');
