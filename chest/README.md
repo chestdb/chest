@@ -179,6 +179,43 @@ void main() {
    ```
 4. Publish your package under the name `<original package>_chest`
 
+## Example: Dark mode
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:chest_flutter/chest_flutter.dart';
+
+late final isDark;
+
+void main() async {
+  isDark = await Chest.open('isDark', ifNew: () => false);
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return RefBuilder(
+      ref: isDark,
+      builder: (context, value) {
+        return MaterialApp(
+          themeMode: value ? ThemeMode.dark : ThemeMode.light,
+          darkTheme: ThemeData.dark(),
+          home: Scaffold(
+            body: Center(
+              child: Switch(
+                value: value,
+                onChanged: (_) => isDark.toggle(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+```
+
 ## TODO before 1.0.0
 
 - [x] Support saving to and reading from chests
