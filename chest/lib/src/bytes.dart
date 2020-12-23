@@ -42,10 +42,34 @@ import 'utils.dart';
 const blockKindMap = 0;
 const blockKindBytes = 1;
 
+extension _EncodingLength on Block {
+  /// The length of the encoding, assuming no deduplication takes place.
+  int get encodingLength {
+    final block = this;
+    if (block is MapBlock) {
+      return _typeCodeLength +
+          _blockKindLength +
+          _lengthLength +
+          block.entries.map((entry) {
+            return 2 * _pointerLength +
+                entry.key.encodingLength +
+                entry.value.encodingLength;
+          }).reduce((a, b) => a + b);
+    } else if (block is BytesBlock) {
+      return _typeCodeLength +
+          _blockKindLength +
+          _lengthLength +
+          block.bytes.length;
+    } else {
+      panic(
+          'Getting encoding length of $block, which is neither a MapBlock nor a BytesBlock.');
+    }
+  }
+}
+
 extension BlockToBytes on Block {
   Uint8List toBytes() {
-    // TODO: Don't hardcode the length.
-    final data = _Data(ByteData(1024));
+    final data = _Data(ByteData(this.encodingLength));
 
     // Map from fully serialized, deduplicated blocks to their offset. Used for
     // deduplication.
