@@ -9,7 +9,7 @@
 </center>
 
 **What's a database?**
-It's just a place to persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called *chests*.
+It's just a place where you can persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called *chests*.
 
 ```dart
 var counter = await Chest.open('counter', ifNew: () => 0);
@@ -20,7 +20,7 @@ await counter.close();
 
 **But isn't treating databases like variables inefficient?**
 Not at all! To be clear, you don't need to read or save the whole object every time you make a change.
-Chest allows you to only change part of a value, even if the class is immutable.
+Chest allows you to only change part of a value, even fields marked with `final`.
 
 ```dart
 var me = await Chest.open('me', ifNew: () => User());
@@ -29,7 +29,7 @@ me.pet.value; // Only decodes the pet.
 me.pet.favoriteFood.color.value = Color.red; // Only changes the color.
 ```
 
-The important thing is that `me` is not a `User`, but a reference to a user – a `Ref<User>`.
+The important thing is that `me` is not a user, but a reference to a user – a `Ref<User>`.
 Only when you use the `.value` getters or setters, you actually decode or change a subtree of the data.
 
 This is especially handy if you're dealing with large maps:
@@ -40,12 +40,12 @@ var marcel = users['marcel'].value; // Only decodes Marcel.
 users['jonas'].value = User(...); // Only saves Jonas.
 ```
 
-**Wait a minute. How does Chest know how to handle my types?**
-Chest comes with its own encoding called *tape*. Built-in types already have built-in tapers (serializers for objects).
+**Hang on. How does Chest know how to handle my types?**
+Chest comes with its own encoding called *tape*. Some types already have built-in tapers (serializers for objects).
 You can annotate your types with `@tape` and let Chest generate tapers automatically:
 
 ```dart
-@tape
+@tape // run `dart pub run build_runner build`
 class Fruit {
   final String name;
   final Color color;
@@ -57,7 +57,7 @@ class Fruit {
 ## Other perks
 
 - ❤️ **Amazing developer experience.** Just like you can inspect your code with Dart's DevTools, you can inspect, debug, and edit your database with ChestTools live in your browser.
-- 🎈 **Lightweight.** Chest is written in pure Dart and has no native dependencies. That also means it works on mobile and desktop.
+- 🎈 **Lightweight.** Chest is written in pure Dart and has no native dependencies. That means it works on any platform.
 <!-- - ⚡ **Fast.** Chest is fast. Unlike most other in-memory databases, it also minimizes startup-time. And if you want to tweak performance, profiling and statistics are built-in. -->
 
 ## How does it work?
