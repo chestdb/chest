@@ -1,5 +1,5 @@
 name: chest
-version: 0.0.2-0
+version: 0.0.3-0
 repository: https://github.com/marcelgarus/chest
 description: An in-memory database with amazing developer experience.
 
