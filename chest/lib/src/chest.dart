@@ -9,8 +9,23 @@ import 'storage/web/storage.dart'
     if (dart.library.io) 'storage/vm/storage.dart';
 import 'tapers.dart';
 
-/// A container for a variable that's persisted beyond the app's lifetime.
+/// A container for a value that's persisted beyond the app's lifetime.
+///
+/// This is how [Chest]s are typically used:
+///
+/// ```dart
+/// var counter = await Chest.open('counter', ifNew: () => 0);
+/// print('This program ran ${counter.value} times.');
+/// counter.value++;
+/// await counter.close();
+/// ```
+///
+/// You don't need to [close] [Chest]s if you're not absolutely sure you don't
+/// need them later on: Even if your program exists while a [Chest] is opened or
+/// its value is being changed, a valid state of the chest is recovered.
 class Chest<T> implements Ref<T> {
+  // TODO: More comment.
+  /// Opens a [Chest].
   static Future<Chest<T>> open<T>(
     String name, {
     required FutureOr<T> Function() ifNew,
