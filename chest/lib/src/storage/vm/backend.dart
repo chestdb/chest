@@ -49,8 +49,7 @@ class VmBackend {
     final header = _file.readHeader();
     if (header == null) return;
     if (header.version > currentVersion) {
-      // TODO: Better error.
-      throw 'Version too big: ${header.version}.';
+      throw VersionTooBigException(header.version);
     }
 
     while (true) {
@@ -79,7 +78,7 @@ class VmBackend {
       return;
     }
     _file.appendUpdate(ChestFileUpdate(path, value));
-    // TODO: Broadcast the value.
+    // TODO: As soon as a backend is used by multiple frontends, broadcast the value.
 
     if (_file.shouldBeCompacted) {
       _compact();
@@ -122,4 +121,15 @@ class VmBackend {
     //   }));
     // });
   }
+}
+
+class VersionTooBigException implements Exception {
+  VersionTooBigException(this.version);
+
+  final int version;
+
+  String toString() =>
+      'The chest you tried to open has version $version, but the Chest package '
+      'used has the file layout version ${VmBackend.currentVersion}.\n'
+      'You should update your Chest dependency.';
 }

@@ -18,13 +18,15 @@ class Chest<T> implements Ref<T> {
     if (_openedChests.containsKey(name)) {
       final chest = _openedChests[name]!;
       if (chest is! Chest<T>) {
-        // TODO: Better error.
-        throw 'Chest with name $name is already opened and not of type $T.';
+        throw ChestDoesNotMatchTypeError(
+          name: name,
+          expectedType: T,
+          actualType: chest._type,
+        );
       }
       return chest;
     }
-    // TODO: Conditionally use VmStorage or WebStorage.
-    final storage = await VmStorage.open(name);
+    final storage = await openStorage(name);
     var initialValue = await storage.getValue();
     if (initialValue == null) {
       final newValue = (await ifNew()).toBlock();
@@ -66,6 +68,7 @@ class Chest<T> implements Ref<T> {
   }
 
   final String name;
+  Type get _type => T;
 
   /// A local, dense in-memory representation of the database.
   final UpdatableBlock _value;
@@ -145,4 +148,19 @@ extension on Path<Object?> {
   Path<Block> serialize() {
     return Path(keys.map((it) => it.toBlock()).toList());
   }
+}
+
+class ChestDoesNotMatchTypeError extends ChestError {
+  ChestDoesNotMatchTypeError({
+    required this.name,
+    required this.expectedType,
+    required this.actualType,
+  });
+
+  final String name;
+  final Type expectedType;
+  final Type actualType;
+
+  String toString() => 'You tried to open Chest "$name" of type '
+      "$expectedType, but it's actually of type $actualType.";
 }
