@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 extension IterableX<T> on Iterable<T> {
   T? get firstOrNull {
     return isEmpty ? null : cast<T?>().firstWhere((_) => true, orElse: null);
@@ -46,12 +44,30 @@ abstract class ChestException implements Exception {}
 
 abstract class ChestError extends Error {}
 
+const repoUrl = 'https://github.com/marcelgarus/chest';
+String newIssueUrl(String title, String body, [List<String> tags = const []]) {
+  return '$repoUrl/issues/new?title=${Uri.encodeComponent(title)}&'
+      'body=${Uri.encodeComponent(body)}&'
+      'tags=${tags.map(Uri.encodeComponent).join(',')}';
+}
+
 class _InternalChestError extends ChestError {
   _InternalChestError(this.message);
 
   final String message;
 
-  String toString() => 'Internal Chest Error: $message';
+  String toString() {
+    return 'An internal Chest Error occurred:\n$message\n\n'
+            'This is not supposed to happen and either indicates that there is '
+            'an error in the Chest package itself or that the error message '
+            'should be substantially improved. Either way, please open a new '
+            'issue at ' +
+        newIssueUrl(
+          'Internal error: $message',
+          "Hi, I'm experiencing the following error:\n$message\n"
+              '<details>\n<summary>Stack trace</summary>\n\n$stackTrace\n</details>',
+        );
+  }
 }
 
 Never panic(String message) => throw _InternalChestError(message);
