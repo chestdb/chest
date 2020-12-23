@@ -1,4 +1,4 @@
-import 'chest.dart';
+import 'package:chest/chest.dart';
 
 void main() async {
   tape.register({
