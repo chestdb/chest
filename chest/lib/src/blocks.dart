@@ -3,7 +3,7 @@ import 'package:more/more.dart';
 import 'utils.dart';
 
 /// An intermediary format that doesn't contain arbitrary [Object]s anymore, but
-/// rather consists of two simple primitives: `MapBlock`s and `ByteBlock`s.
+/// rather consists of two simple primitives: `MapBlock`s and `BytesBlock`s.
 ///
 /// This is comparable to JSON, where also only a handful of primitives are
 /// allowed (numbers, strings, maps, lists, etc.). The difference is that
@@ -13,7 +13,8 @@ abstract class Block implements Comparable<Block> {
 
   int get typeCode;
 
-  A cast<A>() => this is A ? this as A : throw 'Block type not expected';
+  // TODO: Better error.
+  A cast<A>() => this is A ? this as A : throw 'Block type not expected.';
 
   @override
   String toString([int indentation]);
@@ -341,9 +342,7 @@ class UpdatableBlock {
   Never _throwInvalid(Path<Block> path) => throw InvalidPathException(path);
 
   @override
-  String toString() {
-    return 'UpdatableBlock(base: $block, updates: $updates)';
-  }
+  String toString() => 'UpdatableBlock(base: $block, updates: $updates)';
 }
 
 /// Indicates that you attempted to perform an operation with an invalid path.

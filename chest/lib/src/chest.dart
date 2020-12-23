@@ -18,6 +18,7 @@ class Chest<T> implements Ref<T> {
     if (_openedChests.containsKey(name)) {
       final chest = _openedChests[name]!;
       if (chest is! Chest<T>) {
+        // TODO: Better error.
         throw 'Chest with name $name is already opened and not of type $T.';
       }
       return chest;

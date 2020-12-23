@@ -46,24 +46,23 @@ extension _EncodingLength on Block {
   /// The length of the encoding, assuming no deduplication takes place.
   int get encodingLength {
     final block = this;
-    if (block is MapBlock) {
-      return _typeCodeLength +
-          _blockKindLength +
-          _lengthLength +
-          block.entries.map((entry) {
-            return 2 * _pointerLength +
-                entry.key.encodingLength +
-                entry.value.encodingLength;
-          }).reduce((a, b) => a + b);
-    } else if (block is BytesBlock) {
-      return _typeCodeLength +
-          _blockKindLength +
-          _lengthLength +
-          block.bytes.length;
-    } else {
-      panic(
-          'Getting encoding length of $block, which is neither a MapBlock nor a BytesBlock.');
-    }
+    return _typeCodeLength +
+        _blockKindLength +
+        _lengthLength +
+        () {
+          if (block is MapBlock) {
+            return block.entries.map((entry) {
+              return 2 * _pointerLength +
+                  entry.key.encodingLength +
+                  entry.value.encodingLength;
+            }).reduce((a, b) => a + b);
+          } else if (block is BytesBlock) {
+            return block.bytes.length;
+          } else {
+            panic('Getting encoding length of $block, which is neither a '
+                'MapBlock nor a BytesBlock.');
+          }
+        }();
   }
 }
 
@@ -134,8 +133,7 @@ extension BlockToBytes on Block {
         data.addLength(bytes.length);
         bytes.forEach(data.addByte);
       } else {
-        throw CorruptedChestException(
-            'Unknown block $block while serializing.');
+        panic('Unknown block $block while serializing.');
       }
 
       // Deduplication. Check if we already serialized a block that's the same
@@ -382,10 +380,16 @@ class CorruptedChestException implements Exception {
 
   final String message;
 
-  // TODO: Make this more beautiful and maybe put the URL in a variable.
-  String toString() => "Your data seems to be corrupted. If you're "
-      "absolutely sure that can't be the case, open an issue at "
-      "github.com/marcelgarus/chest.\nFurther information: $message";
+  String toString() {
+    return "Your chest seems to be corrupted.\n$message\n"
+            "If you're absolutely sure that can't be the case, please open an "
+            "issue at " +
+        newIssueUrl(
+          'Corrupted chest',
+          "Hi,\nmy chest is corrupted, but I'm pretty sure that shouldn't be "
+              'the case.\n$message',
+        );
+  }
 }
 
 class UnknownTypeCodeException implements Exception {
@@ -393,5 +397,5 @@ class UnknownTypeCodeException implements Exception {
 
   final int typeCode;
 
-  String toString() => 'Unknown type code $typeCode.';
+  String toString() => 'Chest encountered an unknown type code: $typeCode';
 }

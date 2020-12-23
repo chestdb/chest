@@ -10,7 +10,8 @@ import 'transferable_block.dart';
 /// Multiple [Storage]s of the same chest running on different [Isolate]s all
 /// communicate with the same [VmBackend].
 class VmBackend {
-  static const currentFileLayoutVersion = 0;
+  /// The version of the file layout.
+  static const currentVersion = 0;
 
   VmBackend({
     required String name,
@@ -40,14 +41,14 @@ class VmBackend {
     } else if (action is CloseAction) {
       _close();
     } else {
-      throw UnimplementedError('Backend: Unknown action $action.');
+      throw panic('Backend: Unknown action $action.');
     }
   }
 
   Iterable<ChestFileUpdate> _getUpdates() sync* {
     final header = _file.readHeader();
     if (header == null) return;
-    if (header.version > currentFileLayoutVersion) {
+    if (header.version > currentVersion) {
       // TODO: Better error.
       throw 'Version too big: ${header.version}.';
     }
@@ -61,13 +62,9 @@ class VmBackend {
 
   UpdatableBlock? _getValue() {
     UpdatableBlock? value;
-    while (true) {
-      final update = _file.readUpdate();
-      if (update == null) break;
-
+    for (final update in _getUpdates()) {
       if (value == null) {
-        // TODO: Better error.
-        if (!update.path.isRoot) throw 'First update was not for root.';
+        if (!update.path.isRoot) panic('First update was not for root.');
         value = UpdatableBlock(update.value);
       } else {
         value.update(update.path, update.value, createImplicitly: true);
@@ -90,7 +87,6 @@ class VmBackend {
   }
 
   void _compact() {
-    print('Compacting...');
     final value = _getValue();
     if (value == null) panic('Attempted to compact, but value is null.');
     _replaceRootValue(value.getAtRoot());
@@ -99,7 +95,7 @@ class VmBackend {
   void _replaceRootValue(Block newValue) {
     // This is expensive.
     final newFile = ChestFile('${_file.path}.compacted')
-      ..writeHeader(ChestFileHeader(currentFileLayoutVersion))
+      ..writeHeader(ChestFileHeader(currentVersion))
       ..appendUpdate(ChestFileUpdate(Path.root(), newValue));
 
     // Replace the old file.
