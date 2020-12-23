@@ -1,7 +1,7 @@
 name: chest
 version: 0.0.3-0
 repository: https://github.com/marcelgarus/chest
-description: An in-memory database with amazing developer experience.
+description: A flexible in-memory database with amazing developer experience.
 
 dependencies:
   more: ^3.0.0-nullsafety.4
