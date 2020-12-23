@@ -2,11 +2,11 @@
 
 ---
 
-<center>
+<p align="center">
 <img src="../logo.svg" width="300px" alt="Chest" />
 
 ## An in-memory database with amazing developer experience
-</center>
+</p>
 
 **What's a database?**
 It's just a place where you can persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called *chests*.
@@ -56,26 +56,25 @@ class Fruit {
 
 ## Other perks
 
-- ❤️ **Amazing developer experience.** Just like you can inspect your code with Dart's DevTools, you can inspect, debug, and edit your database with ChestTools live in your browser.
+- ❤️ **Amazing developer experience.** Just like you can inspect your program with Dart's DevTools, you can inspect, debug, and edit your database with ChestTools live in your browser.
 - 🎈 **Lightweight.** Chest is written in pure Dart and has no native dependencies. That means it works on any platform.
 <!-- - ⚡ **Fast.** Chest is fast. Unlike most other in-memory databases, it also minimizes startup-time. And if you want to tweak performance, profiling and statistics are built-in. -->
 
 ## How does it work?
 
-Databases usually store data in files and Chest is no different.
+Databases usually store data in files and Chest is no different:
+When you call `Chest.open`, Chest loads the file's raw bytes into memory without doing any deserialization.
+This means that to Dart's garbage collector, the content of a chest is just one big object.
 
-When you call `Chest.open`, Chest opens the file where the value is stored and loads its content into memory.
-It only loads the raw bytes into memory, so no deserialization is happening yet (although it does freshen the bytes up a bit using on-the-fly-decompression). That means, opening Chests is pretty fast.
+Those bytes are optimized for quick partial deserialization and a low memory footprint.
+That makes accessing values pretty fast.
 
-The bytes that are stored in memory are optimized for quick deserialization and a low memory footprint – for example, global deduplication makes it possible that for `{'foo': User('Marcel', Pet('cat')), 'bar': User('Jonas', Pet('cat'))}`, the `Pet('cat')` is only saved once.
-This also means that the garbage collector doesn't need to worry about thousands of unused objects cluttering memory (well, it probably does, but Chest doesn't add much to that). To the garbage collector, the content of a chest is just one big object.
+If you change part of the value, only the update is appended to the end of the file.
+As more updates accumulate, Chest periodically merges the updates with the existing value.
 
-When you access parts of a chest using `.value`, only the part of the value is deserialized on-the-fly.
-
-If you change a part, only this update is appended to the end of the file. As more updates accumulate, Chest periodically merges the updates with the existing value.
-Of course, merging and file access happen on another `Isolate` (Dart's version of threads), so they don't impact performance of your main `Isolate`.
-
-By the way: If you open a chest multiple times, the same instance is reused. And if you open it on multiple `Isolate`s, they all communicate with the same backend.
+By the way:
+Merging updates and accessing files happen on another `Isolate` (Dart's version of threads), so they don't impact performance of your main `Isolate`.
+And if you open a chest multiple times, the same instance is reused.
 
 ## Getting started
 
@@ -93,11 +92,17 @@ dev_dependencies:
 ```
 
 </details>
+
 <details>
 <summary>Open a basic chest</summary>
+
+TODO
 </details>
+
 <details>
 <summary>Generate tapers</summary>
+
+TODO
 </details>
 
 ## Writing tapers manually
