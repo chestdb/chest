@@ -68,6 +68,10 @@ class _TaperForBool extends BytesTaper<bool> {
   bool fromBytes(List<int> bytes) => bytes.single != 0;
 }
 
+extension UtilsForRefOfBool on Ref<bool> {
+  void toggle() => value = !value;
+}
+
 class _TaperForString extends BytesTaper<String> {
   const _TaperForString();
 
