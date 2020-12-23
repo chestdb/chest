@@ -134,7 +134,8 @@ extension BlockToBytes on Block {
         data.addLength(bytes.length);
         bytes.forEach(data.addByte);
       } else {
-        throw CorruptedDataException('Unknown block $block while serializing.');
+        throw CorruptedChestException(
+            'Unknown block $block while serializing.');
       }
 
       // Deduplication. Check if we already serialized a block that's the same
@@ -376,8 +377,8 @@ class _Data {
   }
 }
 
-class CorruptedDataException implements Exception {
-  CorruptedDataException(this.message);
+class CorruptedChestException implements Exception {
+  CorruptedChestException(this.message);
 
   final String message;
 
