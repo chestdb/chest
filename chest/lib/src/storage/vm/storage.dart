@@ -7,6 +7,8 @@ import '../storage.dart';
 import 'backend.dart';
 import 'message.dart';
 
+Future<Storage> openStorage(String name) => VmStorage.open(name);
+
 /// An implementation of [Chest] for the Dart VM.
 ///
 /// Asynchronous I/O is slow in Dart and we want to be able to communicate with
@@ -36,7 +38,7 @@ class VmStorage implements Storage {
   static Future<VmStorage> open(String name) async {
     final receivePort = ReceivePort();
     // TODO: Try to find existing isolate.
-    final isolate = await Isolate.spawn(
+    await Isolate.spawn(
       _runBackend,
       SetupInfo(name, receivePort.sendPort),
       debugName: 'chest.$name',

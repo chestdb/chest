@@ -3,9 +3,10 @@ import 'dart:async';
 import 'api.dart';
 import 'blocks.dart';
 import 'bytes.dart';
-import 'storage/debug/storage.dart';
 import 'storage/storage.dart';
-import 'storage/vm/storage.dart';
+import 'storage/debug/storage.dart';
+import 'storage/web/storage.dart'
+    if (dart.library.io) 'storage/vm/storage.dart';
 import 'tapers.dart';
 
 /// A container for a variable that's persisted beyond the app's lifetime.
