@@ -40,6 +40,18 @@ class Chest<T> implements Ref<T> {
     return chest;
   }
 
+  static void mock<T>(String name, T value) {
+    if (_openedChests.containsKey(name)) {
+      throw 'Called mock, but chest already mocked or opened.';
+    }
+    final initialValue = UpdatableBlock(value.toBlock());
+    _openedChests[name] = Chest<T>._(
+      name: name,
+      storage: DebugStorage(initialValue),
+      initialValue: initialValue,
+    );
+  }
+
   Chest._({
     required this.name,
     required Storage storage,
