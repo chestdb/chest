@@ -9,7 +9,7 @@
 </p>
 
 **What's a database?**
-It's just a place where you can persist data beyond the lifetime of your app. Chest offers exactly that: persistent variables called *chests*.
+It's just a place where you can persist data beyond your app's lifetime. Chest offers exactly that: persistent variables called *chests*.
 
 ```dart
 var counter = await Chest.open('counter', ifNew: () => 0);
@@ -62,9 +62,9 @@ class Fruit {
 
 ## How does it work?
 
-Databases usually store data in files and Chest is no different:
+Databases usually store data in files and Chest is no different.
 When you call `Chest.open`, Chest loads the file's raw bytes into memory without doing any deserialization.
-This means that to Dart's garbage collector, the content of a chest is just one big object.
+This means that to Dart's garbage collector, the chest's content is just one big object.
 
 Those bytes are optimized for quick partial deserialization and a low memory footprint.
 That makes accessing values pretty fast.
