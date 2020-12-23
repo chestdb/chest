@@ -77,6 +77,103 @@ Of course, merging and file access happen on another `Isolate` (Dart's version o
 
 By the way: If you open a chest multiple times, the same instance is reused. And if you open it on multiple `Isolate`s, they all communicate with the same backend.
 
+## Getting started
+
+<details>
+<summary>Add stuff to pubspec</summary>
+
+```yaml
+dependencies:
+  chest: ...
+  # if you're using Flutter
+  flutter_taped: ...
+
+dev_dependencies:
+  tapegen: ...
+```
+
+</details>
+<details>
+<summary>Open a basic chest</summary>
+</details>
+<details>
+<summary>Generate tapers</summary>
+</details>
+
+## Writing tapers manually
+
+When writing tapers manually, you can choose from one of two options:
+
+* serialize objects into bytes
+* serialize objects into maps of serializable objects
+
+For serializing an object into bytes, extend `BytesTaper` and overwrite the `toBytes` and `fromBytes` methods:
+
+```dart
+class _TaperForBool extends BytesTaper<bool> {
+  const _TaperForBool();
+
+  List<int> toBytes(bool value) => [value ? 1 : 0];
+  bool fromBytes(List<int> bytes) => bytes.single != 0;
+}
+```
+
+For serializing an object into a `Map`, extend `MapTaper`
+
+```dart
+class _TaperForUser extends ClassTaper<User> {
+  const _TaperForUser();
+  
+  Map<String, Object> toFields(User value) {
+    return {'name': value.name, 'pet': value.pet};
+  }
+
+  User fromFields(Map<String, Object?> fields) {
+    return User(fields['name'] as String, fields['pet'] as Pet);
+  }
+}
+```
+
+To not clutter your global namespace, it's best practise to make the tapers private, but expose them via the `TapersApi`:
+
+```dart
+extension TaperForUser on TapersApi {
+  Taper<User> forUser() => _TaperForUser();
+}
+```
+
+Then, you can register the taper:
+
+```dart
+void main() {
+  tape.register({
+    ...
+    3: taper.forUser(),
+  });
+}
+```
+
+## Publishing tapers for a package
+
+1. Write tapers manually, as shown above.
+2. Add a type code to the table of type ids. (TODO: Add link)
+3. Write code like the following for registering tapers:
+   ```dart
+   extension TapersPackageForDartMath on TapersForPackageApi {
+     Map<int, Taper<dynamic>> get forDartMath {
+       return {
+         -30: taper.forMutableRectangle<int>(),
+         -31: taper.forMutableRectangle<double>(),
+         -32: taper.forRectangle<int>(),
+         -33: taper.forRectangle<double>(),
+         -34: taper.forPoint<int>(),
+         -35: taper.forPoint<double>(),
+       };
+     }
+   }
+   ```
+4. Publish your package under the name `<original package>_chest`
+
 ## TODO before 1.0.0
 
 - [x] Support saving to and reading from chests
@@ -93,6 +190,9 @@ By the way: If you open a chest multiple times, the same instance is reused. And
   - [x] Logo
 - [x] Use more efficient `TransferableTypedData`
 - [x] Support manually compacting chests
+- [x] Write docs on how to write tapers
+- [x] Document the tape format
+- [x] Document the file format
 - [ ] Support taper migration
 - [ ] Support storing references
 - [ ] Properly handle opening a chest in multiple isolates (blocked by https://github.com/dart-lang/sdk/issues/44495)
@@ -110,10 +210,7 @@ By the way: If you open a chest multiple times, the same instance is reused. And
   - [ ] tuple
   - [ ] Flutter
 - [ ] Write docs on how to get started
-- [ ] Write docs on how to write tapers
 - [ ] Write docs on how to migrate tapers
-- [ ] Document the tape format
-- [ ] Document the file format
 - [ ] Write tests
 - [ ] Add CI
 - [ ] Benchmark
