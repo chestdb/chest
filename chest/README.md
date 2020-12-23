@@ -203,6 +203,8 @@ void main() {
 - [ ] Add cycle detection
   - [ ] during serialization
   - [ ] during deserialization
+- [ ] Code generation using tapegen
+  - [ ] Create tapers
 - [ ] Write tapers for various common types
   - [x] dart:core
   - [x] dart:math
@@ -215,7 +217,7 @@ void main() {
 - [ ] Add CI
 - [ ] Benchmark
   - [ ] Write performance suite
-  - [ ] Compare with other databases:
+  - [ ] Compare with other databases
     - [ ] Hive & Lazy Hive
     - [ ] Sembast
     - [ ] SQLite
