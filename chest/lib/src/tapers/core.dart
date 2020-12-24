@@ -68,7 +68,7 @@ class _TaperForBool extends BytesTaper<bool> {
   bool fromBytes(List<int> bytes) => bytes.single != 0;
 }
 
-extension UtilsForRefOfBool on Ref<bool> {
+extension UtilsForRefOfBool on Reference<bool> {
   void toggle() => value = !value;
 }
 
@@ -182,9 +182,9 @@ class _TaperForDateTime extends ClassTaper<DateTime> {
   }
 }
 
-extension ChildrenOfDateTime on Ref<DateTime> {
-  Ref<int> get microsecondsSinceEpoch => child('microsecondsSinceEpoch');
-  Ref<bool> get isUtc => child('isUtc');
+extension ChildrenOfDateTime on Reference<DateTime> {
+  Reference<int> get microsecondsSinceEpoch => child('microsecondsSinceEpoch');
+  Reference<bool> get isUtc => child('isUtc');
 }
 
 class _TaperForDuration extends ClassTaper<Duration> {
@@ -201,8 +201,8 @@ class _TaperForDuration extends ClassTaper<Duration> {
   }
 }
 
-extension ChildrenOfDuration on Ref<Duration> {
-  Ref<int> get microseconds => child('microseconds');
+extension ChildrenOfDuration on Reference<Duration> {
+  Reference<int> get microseconds => child('microseconds');
 }
 
 class _TaperForList<T> extends MapTaper<List<T>> {
@@ -219,8 +219,8 @@ class _TaperForList<T> extends MapTaper<List<T>> {
   }
 }
 
-extension ChildrenOfList<T> on Ref<List<T>> {
-  Ref<T> operator [](int index) => child(index);
+extension ChildrenOfList<T> on Reference<List<T>> {
+  Reference<T> operator [](int index) => child(index);
 }
 
 class _TaperForMap<K, V> extends MapTaper<Map<K, V>> {
@@ -233,6 +233,6 @@ class _TaperForMap<K, V> extends MapTaper<Map<K, V>> {
   Map<K, V> fromMap(Map<Object?, Object?> map) => map.cast<K, V>();
 }
 
-extension ChildrenOfMap<K, V> on Ref<Map<K, V>> {
-  Ref<V> operator [](K key) => child(key, createImplicitly: true);
+extension ChildrenOfMap<K, V> on Reference<Map<K, V>> {
+  Reference<V> operator [](K key) => child(key, createImplicitly: true);
 }

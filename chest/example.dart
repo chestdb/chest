@@ -68,10 +68,10 @@ class _TaperForUser extends ClassTaper<User> {
   }
 }
 
-extension ChildrenOfUser on Ref<User> {
-  Ref<String> get name => child('name');
-  Ref<int> get age => child('age');
-  Ref<Pet> get pet => child('pet');
+extension ChildrenOfUser on Reference<User> {
+  Reference<String> get name => child('name');
+  Reference<int> get age => child('age');
+  Reference<Pet> get pet => child('pet');
 }
 
 // // Pet
@@ -90,6 +90,6 @@ class _TaperForPet extends ClassTaper<Pet> {
   }
 }
 
-extension ChildrenOfPet on Ref<Pet> {
-  Ref<String> get name => child('name');
+extension ChildrenOfPet on Reference<Pet> {
+  Reference<String> get name => child('name');
 }

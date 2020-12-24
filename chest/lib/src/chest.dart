@@ -23,7 +23,7 @@ import 'tapers.dart';
 /// You don't need to [close] [Chest]s if you're not absolutely sure you don't
 /// need them later on: Even if your program exists while a [Chest] is opened or
 /// its value is being changed, a valid state of the chest is recovered.
-class Chest<T> implements Ref<T> {
+class Chest<T> implements Reference<T> {
   // TODO: More comment.
   /// Opens a [Chest].
   static Future<Chest<T>> open<T>(
@@ -106,7 +106,7 @@ class Chest<T> implements Ref<T> {
   }
 
   @override
-  Ref<R> child<R>(Object? key, {bool createImplicitly = false}) =>
+  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
       _FieldRef<R>(this, Path([key]), createImplicitly);
 
   @override
@@ -127,7 +127,7 @@ class Chest<T> implements Ref<T> {
   Stream<R?> _watchAt<R>(Path<Block> path) {
     return _valueChanged
         .where((changedPath) {
-          // Only deserialize on those events that can the value.
+          // Only deserialize on those events that could have changed the value.
           return path.startsWith(path) || path.startsWith(changedPath);
         })
         .map((_) => _getAt<R>(path))
@@ -135,22 +135,22 @@ class Chest<T> implements Ref<T> {
   }
 }
 
-/// A reference to an interior part of the same [Chest].
-abstract class Ref<T> {
-  Ref<R> child<R>(Object? key, {bool createImplicitly = false});
+/// A reference to an interior part of a [Chest].
+abstract class Reference<T> {
+  Reference<R> child<R>(Object? key, {bool createImplicitly = false});
   set value(T value);
   T get value;
   Stream<T?> watch();
 }
 
-class _FieldRef<T> implements Ref<T> {
+class _FieldRef<T> implements Reference<T> {
   _FieldRef(this.chest, this.path, this.createImplicitly);
 
   final Chest chest;
   final Path<Object?> path;
   final bool createImplicitly;
 
-  Ref<R> child<R>(Object? key, {bool createImplicitly = false}) =>
+  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]), createImplicitly);
 
   set value(T value) => chest._setAt(path.serialize(), value.toBlock(),

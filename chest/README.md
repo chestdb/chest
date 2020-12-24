@@ -29,7 +29,7 @@ me.pet.value; // Only decodes the pet.
 me.pet.favoriteFood.color.value = Color.red; // Only changes the color.
 ```
 
-The important thing is that `me` is not a user, but a reference to a user – a `Ref<User>`.
+The important thing is that `me` is not a `User`, but a `Reference<User>`.
 Only when you use the `.value` getters or setters, you actually decode or change a subtree of the data.
 
 This is especially handy if you're dealing with large maps:
@@ -45,7 +45,10 @@ Chest comes with its own encoding called *tape*. Some types already have built-i
 You can annotate your types with `@tape` and let Chest generate tapers automatically:
 
 ```dart
-@tape // run `dart pub run build_runner build`
+// Run `dart pub run build_runner build` in the command line.
+part 'this_file.g.dart';
+
+@tape
 class Fruit {
   final String name;
   final Color color;
@@ -63,8 +66,8 @@ class Fruit {
 ## How does it work?
 
 Databases usually store data in files and Chest is no different.
-When you call `Chest.open`, Chest loads the file's raw bytes into memory without doing any deserialization.
-This means that to Dart's garbage collector, the chest's content is just one big object.
+When you open a chest, the file's raw bytes are loaded into memory without doing any deserialization.
+So, to Dart's garbage collector, the chest's content is just one big object.
 
 Those bytes are optimized for quick partial deserialization and a low memory footprint.
 That makes accessing values pretty fast.
@@ -195,8 +198,8 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return RefBuilder(
-      ref: isDark,
+    return ReferenceBuilder(
+      reference: isDark,
       builder: (context, value) {
         return MaterialApp(
           themeMode: value ? ThemeMode.dark : ThemeMode.light,
