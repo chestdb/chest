@@ -24,24 +24,101 @@ import 'tapers.dart';
 /// need them later on: Even if your program exists while a [Chest] is opened or
 /// its value is being changed, a valid state of the chest is recovered.
 class Chest<T> implements Reference<T> {
-  // TODO: More comment.
-  /// Opens a [Chest].
-  static Future<Chest<T>> open<T>(
-    String name, {
-    required FutureOr<T> Function() ifNew,
-  }) async {
-    assert(tape.isInitialized);
-    if (_openedChests.containsKey(name)) {
-      final chest = _openedChests[name]!;
-      if (chest is! Chest<T>) {
-        throw ChestDoesNotMatchTypeError(
-          name: name,
-          expectedType: T,
-          actualType: chest._type,
-        );
-      }
-      return chest;
+  /// Creates a new [Chest].
+  Chest(this.name, {required this.ifNew});
+
+  // TODO: Support mocking for boxes that are closed and then re-opened.
+  static void mock<T>(String name, T value) {
+    if (_mockBackends.containsKey(name)) {
+      panic('Called Chest.mock, but chest "$name" is already mocked.');
     }
+    if (_backends.isNotEmpty) {
+      panic('Called Chest.mock after you opened a chest. All mock calls should '
+          'occur before opening the first chest.');
+    }
+    final updatable = UpdatableBlock(value.toBlock());
+    _mockBackends[name] = _Backend<T>(updatable, DebugStorage(updatable));
+  }
+
+  final String name;
+  final T Function() ifNew;
+  _Backend<T>? _backend;
+  bool get isOpened => _backend != null;
+
+  Future<void> open() async {
+    if (_mockBackends.containsKey(name)) {
+      _backend = _mockBackends[name]!.cast<T>(name);
+    } else if (_backends.containsKey(name)) {
+      _backend = _backends[name]!.cast<T>(name);
+    } else {
+      _backend = await _Backend.open(name, ifNew);
+      _backends[name] = _backend!;
+    }
+  }
+
+  Future<void> flush() async {
+    assert(isOpened);
+    await _backend!._flush();
+  }
+
+  Future<void> compact() async {
+    assert(isOpened);
+    await _backend!._compact();
+  }
+
+  Future<void> close() async {
+    assert(isOpened);
+    await _backend!._close();
+    _backend = null;
+    _backends.remove(name);
+  }
+
+  @override
+  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
+      _FieldRef<R>(this, Path([key]), createImplicitly);
+
+  @override
+  set value(T value) => _setAt(Path.root(), value, true);
+  void _setAt(Path<Block> path, T value, bool createImplicitly) {
+    assert(isOpened);
+    _backend!._setAt(path, value.toBlock(), createImplicitly);
+  }
+
+  @override
+  T get value => _getAt(Path.root());
+  T _getAt(Path<Block> path) {
+    assert(isOpened);
+    return _backend!._getAt(path);
+  }
+
+  @override
+  Stream<T?> watch() => _watchAt<T>(Path.root());
+  Stream<R?> _watchAt<R>(Path<Block> path) {
+    assert(isOpened);
+    return _backend!._watchAt(path);
+  }
+}
+
+final _mockBackends = <String, _Backend<dynamic>>{};
+final _backends = <String, _Backend<dynamic>>{};
+
+/// The logic of a currently opened [Chest].
+class _Backend<T> {
+  _Backend(this._value, this._storage) {
+    _storage.updates.listen((update) {
+      _value.update(update.path, update.value, createImplicitly: true);
+      _onValueChangedController.add(Path.root());
+    });
+  }
+
+  final UpdatableBlock _value;
+  final Storage _storage;
+  final _onValueChangedController = StreamController<Path<Block>>.broadcast();
+
+  Type get _type => T;
+  Stream<Path<Block>> get _onValueChanged => _onValueChangedController.stream;
+
+  static Future<_Backend<T>> open<T>(String name, T Function() ifNew) async {
     final storage = await openStorage(name);
     var initialValue = await storage.getValue();
     if (initialValue == null) {
@@ -50,88 +127,46 @@ class Chest<T> implements Reference<T> {
       initialValue = UpdatableBlock(newValue);
     }
     // TODO: Check that the content is indeed of type T.
-    final chest = Chest<T>._(
-      name: name,
-      storage: storage,
-      initialValue: initialValue,
-    );
-    _openedChests[name] = chest;
-    return chest;
+    return _Backend<T>(initialValue, storage);
   }
 
-  // TODO: Support mocking for boxes that are closed and then re-opened.
-  static void mock<T>(String name, T value) {
-    if (_openedChests.containsKey(name)) {
-      throw 'Called mock, but chest already mocked or opened.';
-    }
-    final initialValue = UpdatableBlock(value.toBlock());
-    _openedChests[name] = Chest<T>._(
-      name: name,
-      storage: DebugStorage(initialValue),
-      initialValue: initialValue,
-    );
-  }
-
-  Chest._({
-    required this.name,
-    required Storage storage,
-    required UpdatableBlock initialValue,
-  })   : _storage = storage,
-        _value = initialValue {
-    _storage.updates.listen((update) {
-      _value.update(update.path, update.value, createImplicitly: true);
-      _valueChangedController.add(Path.root());
-    });
-  }
-
-  final String name;
-  Type get _type => T;
-
-  /// A local, dense in-memory representation of the database.
-  final UpdatableBlock _value;
-  final Storage _storage;
-
-  /// A stream that emits an event every time the value changes.
-  final _valueChangedController = StreamController<Path<Block>>.broadcast();
-  Stream<Path<Block>> get _valueChanged => _valueChangedController.stream;
-
-  Future<void> flush() => _storage.flush();
-  Future<void> compact() => _storage.compact();
-  Future<void> close() async {
+  Future<void> _flush() => _storage.flush();
+  Future<void> _compact() => _storage.compact();
+  Future<void> _close() async {
     // Let the actual value be garbage collected by replacing it with a small
     // one.
     _value.update(Path.root(), MapBlock(0, {}), createImplicitly: false);
-    _valueChangedController.close();
+    _onValueChangedController.close();
     await _storage.close();
   }
 
-  @override
-  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
-      _FieldRef<R>(this, Path([key]), createImplicitly);
-
-  @override
-  set value(T value) =>
-      _setAt(Path.root(), value.toBlock(), createImplicitly: false);
-  void _setAt(Path<Block> path, Block value, {required bool createImplicitly}) {
+  void _setAt(Path<Block> path, Block value, bool createImplicitly) {
     _value.update(path, value, createImplicitly: createImplicitly);
-    _valueChangedController.add(path);
+    _onValueChangedController.add(path);
     _storage.setValue(path, value);
   }
 
-  @override
-  T get value => _getAt(Path.root());
   R? _getAt<R>(Path<Block> path) => _value.getAt(path)?.toObject() as R;
 
-  @override
-  Stream<T?> watch() => _watchAt(Path.root());
   Stream<R?> _watchAt<R>(Path<Block> path) {
-    return _valueChanged
+    return _onValueChanged
         .where((changedPath) {
           // Only deserialize on those events that could have changed the value.
           return path.startsWith(path) || path.startsWith(changedPath);
         })
         .map((_) => _getAt<R>(path))
         .distinct();
+  }
+
+  _Backend<R> cast<R>(String name) {
+    if (this is! _Backend<R>) {
+      throw ChestDoesNotMatchTypeError(
+        name: name,
+        expectedType: R,
+        actualType: _type,
+      );
+    }
+    return this as _Backend<R>;
   }
 }
 
@@ -153,13 +188,11 @@ class _FieldRef<T> implements Reference<T> {
   Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]), createImplicitly);
 
-  set value(T value) => chest._setAt(path.serialize(), value.toBlock(),
-      createImplicitly: createImplicitly);
+  set value(T value) =>
+      chest._setAt(path.serialize(), value.toBlock(), createImplicitly);
   T get value => chest._getAt(path.serialize());
   Stream<T?> watch() => chest._watchAt(path.serialize());
 }
-
-final _openedChests = <String, Chest>{};
 
 extension on Path<Object?> {
   Path<Block> serialize() {

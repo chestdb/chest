@@ -188,10 +188,10 @@ void main() {
 import 'package:flutter/material.dart';
 import 'package:chest_flutter/chest_flutter.dart';
 
-late final Chest<bool> isDark;
+final isDark = Chest<bool>('isDark', ifNew: () => false);
 
 void main() async {
-  isDark = await Chest.open('isDark', ifNew: () => false);
+  await isDark.open();
   runApp(MyApp());
 }
 

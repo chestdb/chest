@@ -12,10 +12,8 @@ void main() async {
 
   /// Chests are a storage for global, persisted variables.
   print('Opening foo chest');
-  final foo = await Chest.open<User>(
-    '🌮',
-    ifNew: () => User('Marcel', Pet('0')),
-  );
+  final foo = Chest<User>('🌮', ifNew: () => User('Marcel', Pet('0')));
+  await foo.open();
   // foo.pet.watch().handleError((error) {
   //   print('Error. Value is ${foo.value}.');
   // }).forEach((it) => print('Pet is now $it.'));
