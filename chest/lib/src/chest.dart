@@ -1,13 +1,10 @@
 import 'dart:async';
 
-import 'api.dart';
+import 'backend.dart';
 import 'blocks.dart';
 import 'bytes.dart';
 import 'storage/storage.dart';
 import 'storage/debug/storage.dart';
-import 'storage/web/storage.dart'
-    if (dart.library.io) 'storage/vm/storage.dart';
-import 'tapers.dart';
 
 /// A container for a value that's persisted beyond the app's lifetime.
 ///
@@ -32,45 +29,45 @@ class Chest<T> implements Reference<T> {
     if (_mockBackends.containsKey(name)) {
       panic('Called Chest.mock, but chest "$name" is already mocked.');
     }
-    if (_backends.isNotEmpty) {
+    if (_openedBackends.isNotEmpty) {
       panic('Called Chest.mock after you opened a chest. All mock calls should '
           'occur before opening the first chest.');
     }
     final updatable = UpdatableBlock(value.toBlock());
-    _mockBackends[name] = _Backend<T>(updatable, DebugStorage(updatable));
+    _mockBackends[name] = Backend<T>(updatable, DebugStorage(updatable));
   }
 
   final String name;
   final T Function() ifNew;
-  _Backend<T>? _backend;
+  Backend<T>? _backend;
   bool get isOpened => _backend != null;
 
   Future<void> open() async {
     if (_mockBackends.containsKey(name)) {
       _backend = _mockBackends[name]!.cast<T>(name);
-    } else if (_backends.containsKey(name)) {
-      _backend = _backends[name]!.cast<T>(name);
+    } else if (_openedBackends.containsKey(name)) {
+      _backend = _openedBackends[name]!.cast<T>(name);
     } else {
-      _backend = await _Backend.open(name, ifNew);
-      _backends[name] = _backend!;
+      _backend = await Backend.open(name, ifNew);
+      _openedBackends[name] = _backend!;
     }
   }
 
   Future<void> flush() async {
     assert(isOpened);
-    await _backend!._flush();
+    await _backend!.flush();
   }
 
   Future<void> compact() async {
     assert(isOpened);
-    await _backend!._compact();
+    await _backend!.compact();
   }
 
   Future<void> close() async {
     assert(isOpened);
-    await _backend!._close();
+    await _backend!.close();
     _backend = null;
-    _backends.remove(name);
+    _openedBackends.remove(name);
   }
 
   @override
@@ -81,94 +78,26 @@ class Chest<T> implements Reference<T> {
   set value(T value) => _setAt(Path.root(), value, true);
   void _setAt(Path<Block> path, T value, bool createImplicitly) {
     assert(isOpened);
-    _backend!._setAt(path, value.toBlock(), createImplicitly);
+    _backend!.setAt(path, value.toBlock(), createImplicitly);
   }
 
   @override
   T get value => _getAt(Path.root());
   T _getAt(Path<Block> path) {
     assert(isOpened);
-    return _backend!._getAt(path);
+    return _backend!.getAt(path);
   }
 
   @override
   Stream<T?> watch() => _watchAt<T>(Path.root());
   Stream<R?> _watchAt<R>(Path<Block> path) {
     assert(isOpened);
-    return _backend!._watchAt(path);
+    return _backend!.watchAt(path);
   }
 }
 
-final _mockBackends = <String, _Backend<dynamic>>{};
-final _backends = <String, _Backend<dynamic>>{};
-
-/// The logic of a currently opened [Chest].
-class _Backend<T> {
-  _Backend(this._value, this._storage) {
-    _storage.updates.listen((update) {
-      _value.update(update.path, update.value, createImplicitly: true);
-      _onValueChangedController.add(Path.root());
-    });
-  }
-
-  final UpdatableBlock _value;
-  final Storage _storage;
-  final _onValueChangedController = StreamController<Path<Block>>.broadcast();
-
-  Type get _type => T;
-  Stream<Path<Block>> get _onValueChanged => _onValueChangedController.stream;
-
-  static Future<_Backend<T>> open<T>(String name, T Function() ifNew) async {
-    final storage = await openStorage(name);
-    var initialValue = await storage.getValue();
-    if (initialValue == null) {
-      final newValue = (await ifNew()).toBlock();
-      storage.setValue(Path.root(), newValue);
-      initialValue = UpdatableBlock(newValue);
-    }
-    // TODO: Check that the content is indeed of type T.
-    return _Backend<T>(initialValue, storage);
-  }
-
-  Future<void> _flush() => _storage.flush();
-  Future<void> _compact() => _storage.compact();
-  Future<void> _close() async {
-    // Let the actual value be garbage collected by replacing it with a small
-    // one.
-    _value.update(Path.root(), MapBlock(0, {}), createImplicitly: false);
-    _onValueChangedController.close();
-    await _storage.close();
-  }
-
-  void _setAt(Path<Block> path, Block value, bool createImplicitly) {
-    _value.update(path, value, createImplicitly: createImplicitly);
-    _onValueChangedController.add(path);
-    _storage.setValue(path, value);
-  }
-
-  R? _getAt<R>(Path<Block> path) => _value.getAt(path)?.toObject() as R;
-
-  Stream<R?> _watchAt<R>(Path<Block> path) {
-    return _onValueChanged
-        .where((changedPath) {
-          // Only deserialize on those events that could have changed the value.
-          return path.startsWith(path) || path.startsWith(changedPath);
-        })
-        .map((_) => _getAt<R>(path))
-        .distinct();
-  }
-
-  _Backend<R> cast<R>(String name) {
-    if (this is! _Backend<R>) {
-      throw ChestDoesNotMatchTypeError(
-        name: name,
-        expectedType: R,
-        actualType: _type,
-      );
-    }
-    return this as _Backend<R>;
-  }
-}
+final _mockBackends = <String, Backend<dynamic>>{};
+final _openedBackends = <String, Backend<dynamic>>{};
 
 /// A reference to an interior part of a [Chest].
 abstract class Reference<T> {
@@ -198,19 +127,4 @@ extension on Path<Object?> {
   Path<Block> serialize() {
     return Path(keys.map((it) => it.toBlock()).toList());
   }
-}
-
-class ChestDoesNotMatchTypeError extends ChestError {
-  ChestDoesNotMatchTypeError({
-    required this.name,
-    required this.expectedType,
-    required this.actualType,
-  });
-
-  final String name;
-  final Type expectedType;
-  final Type actualType;
-
-  String toString() => 'You tried to open Chest "$name" of type '
-      "$expectedType, but it's actually of type $actualType.";
 }
