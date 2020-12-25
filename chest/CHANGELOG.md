@@ -1,9 +1,9 @@
 ## 0.0.3-0
 
-- Develop brand including color palette, font, and logo.
-- Use more efficient `TransferableTypedData` for sending bytes between `Isolate`s.
-- Support manually compacting chests.
-- Revise readme, adding documentation on tapers.
+* Develop brand including color palette, font, and logo.
+* Use more efficient `TransferableTypedData` for sending bytes between `Isolate`s.
+* Support manually compacting chests.
+* Revise readme, adding documentation on tapers.
 
 ## 0.0.2-0
 
