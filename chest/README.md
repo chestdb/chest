@@ -3,10 +3,9 @@
 ---
 
 <p align="center">
-<img src="../logo.svg" width="300px" alt="Chest" />
-
-## An in-memory database with amazing developer experience
+<img src="https://raw.githubusercontent.com/marcelgarus/chest/master/logo.svg" width="300px" alt="Chest" />
 </p>
+<h2 align="center"> An in-memory database with amazing developer experience</h2>
 
 **What's a database?**
 It's just a place where you can persist data beyond your app's lifetime. Chest offers exactly that: persistent variables called *chests*.
