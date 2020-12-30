@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'dart:typed_data';
@@ -18,8 +19,8 @@ import '../storage.dart';
 ///
 /// ## Header layout
 ///
-/// | version |
-/// | 8 byte  |
+/// | magic bytes                | version |
+/// | 5 bytes ("chest" in ASCII) | 8 byte  |
 ///
 /// ## Update layout
 ///
@@ -32,10 +33,13 @@ class ChestFile {
   final SyncFile _file;
 
   ChestFileHeader? readHeader() {
-    if (_file.length() == 0) {
+    if (_file.length() < 5 + 8) {
       return null;
     }
     _file.goToStart();
+    for (final char in 'chest'.codeUnits) {
+      if (_file.readByte() != char) return null;
+    }
     final version = _file.readInt();
     return ChestFileHeader(version);
   }
@@ -70,6 +74,7 @@ class ChestFile {
   void writeHeader(ChestFileHeader header) {
     _file
       ..clear()
+      ..writeBytes(ascii.encode('chest'))
       ..writeInt(header.version)
       ..flush();
   }
