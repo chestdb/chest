@@ -80,34 +80,81 @@ And if you open a chest multiple times, the same instance is reused.
 
 ## Getting started
 
-<details>
-<summary>Add stuff to pubspec</summary>
+Add these dependencies to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
   chest: ...
-  # if you're using Flutter
-  flutter_taped: ...
+  chest_flutter: ... # if you're using Flutter
 
 dev_dependencies:
   tapegen: ...
+  build_runner: ...
 ```
 
-</details>
+Here's a minimal example using a chest to store how many times the program already ran:
 
-<details>
-<summary>Open a basic chest</summary>
+```dart
+void main() async {
+  tape.register({
+    ...tapers.forDartCore,
+  });
+  final counter = Chest('counter', ifNew: () => 0);
+  await counter.open();
+  print('This program ran ${counter.value} times.');
+  counter.value++;
+  await counter.close();
+}
+```
 
-TODO
-</details>
+Let's go through it line by line!
 
-<details>
-<summary>Generate tapers</summary>
+For all types that are put into chests, tapers need to be registered. Usually, that's at the beginning of your `main` method.
+There are default tapers for most types from `dart:core` that you can use.
+When you want to save you own types in a chest, the register method might look something like this:
 
-TODO
-</details>
+```dart
+tape.register({
+  ...tapers.forDartCore,
+  ...tapers.forTuple,
+  0: taper.forUser(),
+  1: taper.forList<User>(),
+  2: legacyTaper.forPet().v1,
+  3: taper.forPet(),
+});
+```
 
-## Writing tapers manually
+There are packages that include tapers for other packages.
+For example, for the `tuple` package, there's the `tuple_tapers` package that contains tapers for all the tuple types.
+
+Tapers are all registered under a type id.
+
+### Open a basic chest
+
+Create and open a chest like this:
+
+```dart
+var chest = Chest<bool>('some-name', ifNew: () => false);
+await chest.open();
+```
+
+### Access the value of a chest
+
+Each chest is like a persisted variable. Get the value using the `.value` getter:
+
+```dart
+print(chest.value);
+```
+
+You can set the value by using the `.value` setter:
+
+```dart
+chest.value = true;
+```
+
+## Tapers
+
+### Writing tapers manually
 
 When writing tapers manually, you can choose from one of two options:
 
@@ -160,7 +207,7 @@ void main() {
 }
 ```
 
-## Publishing tapers for a package
+### Publishing tapers for a package
 
 1. Write tapers manually, as shown above.
 2. Add a type code to the table of type ids. (TODO: Add link)
