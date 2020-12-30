@@ -75,21 +75,21 @@ class Chest<T> implements Reference<T> {
 
   @override
   set value(T value) => _setAt(Path.root(), value, true);
-  void _setAt(Path<Block> path, T value, bool createImplicitly) {
+  void _setAt(Path<Object?> path, T value, bool createImplicitly) {
     assert(isOpened);
-    _backend!.setAt(path, value.toBlock(), createImplicitly);
+    _backend!.setAt(path, value, createImplicitly);
   }
 
   @override
   T get value => _getAt(Path.root());
-  T _getAt(Path<Block> path) {
+  T _getAt(Path<Object?> path) {
     assert(isOpened);
     return _backend!.getAt(path);
   }
 
   @override
   Stream<T?> watch() => _watchAt<T>(Path.root());
-  Stream<R?> _watchAt<R>(Path<Block> path) {
+  Stream<R?> _watchAt<R>(Path<Object?> path) {
     assert(isOpened);
     return _backend!.watchAt(path);
   }
@@ -116,14 +116,7 @@ class _FieldRef<T> implements Reference<T> {
   Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
       _FieldRef(chest, Path<Object?>([...path.keys, key]), createImplicitly);
 
-  set value(T value) =>
-      chest._setAt(path.serialize(), value.toBlock(), createImplicitly);
-  T get value => chest._getAt(path.serialize());
-  Stream<T?> watch() => chest._watchAt(path.serialize());
-}
-
-extension on Path<Object?> {
-  Path<Block> serialize() {
-    return Path(keys.map((it) => it.toBlock()).toList());
-  }
+  set value(T value) => chest._setAt(path, value.toBlock(), createImplicitly);
+  T get value => chest._getAt(path);
+  Stream<T?> watch() => chest._watchAt(path);
 }

@@ -45,21 +45,26 @@ class Backend<T> {
     await _storage.close();
   }
 
-  void setAt(Path<Block> path, Block value, bool createImplicitly) {
-    _value.update(path, value, createImplicitly: createImplicitly);
-    _onValueChangedController.add(path);
-    _storage.setValue(path, value);
+  void setAt(Path<Object?> path, Object? value, bool createImplicitly) {
+    final blockPath = path.serialize();
+    final blockValue = value.toBlock();
+    _value.update(blockPath, blockValue, createImplicitly: createImplicitly);
+    _onValueChangedController.add(blockPath);
+    _storage.setValue(blockPath, blockValue);
   }
 
-  R? getAt<R>(Path<Block> path) => _value.getAt(path)?.toObject() as R;
+  R? getAt<R>(Path<Object?> path) =>
+      _value.getAt(path.serialize())?.toObject() as R;
 
-  Stream<R?> watchAt<R>(Path<Block> path) {
+  Stream<R?> watchAt<R>(Path<Object?> path) {
+    final blockPath = path.serialize();
     return _onValueChanged
         .where((changedPath) {
           // Only deserialize on those events that could have changed the value.
-          return path.startsWith(path) || path.startsWith(changedPath);
+          return changedPath.startsWith(blockPath) ||
+              blockPath.startsWith(changedPath);
         })
-        .map((_) => getAt<R>(path))
+        .map((_) => getAt<R>(blockPath))
         .distinct();
   }
 
@@ -88,4 +93,10 @@ class ChestDoesNotMatchTypeError extends ChestError {
 
   String toString() => 'You tried to open Chest "$name" of type '
       "$expectedType, but it's actually of type $actualType.";
+}
+
+extension on Path<Object?> {
+  Path<Block> serialize() {
+    return Path(keys.map((it) => it.toBlock()).toList());
+  }
 }
