@@ -19,12 +19,10 @@ For the readme, see `chest/README.md`.
 - [x] Write docs on how to write tapers
 - [x] Document the tape format
 - [x] Document the file format
-- [ ] Support transactions
 - [ ] Support taper migration
-- [ ] Set up website
+- [ ] Support transactions
 - [ ] Support storing references
-- [ ] Properly handle opening a chest in multiple isolates (blocked by https://github.com/dart-lang/sdk/issues/44495)
-- [ ] cross-Isolate adapter registry? (blocked by https://github.com/dart-lang/sdk/issues/44495)
+- [ ] Set up website
 - [ ] Support lazy chests
 - [ ] Make errors more beautiful
   - [ ] Suggest tapers
@@ -67,3 +65,5 @@ For the readme, see `chest/README.md`.
     - [ ] File layout: Base data vs deltas
     - [ ] Trigger manual compaction
 - [ ] Insert events into the Dart Debugging Timeline
+- [ ] Properly handle opening a chest in multiple isolates (blocked by https://github.com/dart-lang/sdk/issues/44495)
+- [ ] cross-Isolate adapter registry? (blocked by https://github.com/dart-lang/sdk/issues/44495)
