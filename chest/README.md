@@ -11,7 +11,8 @@
 It's just a place where you can persist data beyond your app's lifetime. Chest offers exactly that: persistent variables called *chests*.
 
 ```dart
-var counter = await Chest.open('counter', ifNew: () => 0);
+var counter = Chest<int>('counter', ifNew: () => 0);
+await counter.open();
 print('This program ran ${counter.value} times.');
 counter.value++;
 await counter.close();
@@ -22,7 +23,8 @@ Not at all! To be clear, you don't need to read or save the whole object every t
 Chest allows you to only change part of a value, even fields marked with `final`.
 
 ```dart
-var me = await Chest.open('me', ifNew: () => User());
+var me = Chest('me', ifNew: () => User());
+await me.open();
 me.value; // Decodes the whole user.
 me.pet.value; // Only decodes the pet.
 me.pet.favoriteFood.color.value = Color.red; // Only changes the color.
@@ -34,7 +36,8 @@ Only when you use the `.value` getters or setters, you actually decode or change
 This is especially handy if you're dealing with large maps:
 
 ```dart
-var users = await Chest.open<Map<String, User>>('users', ifNew: () => {});
+var users = Chest<Map<String, User>>('users', ifNew: () => {});
+await users.open();
 var marcel = users['marcel'].value; // Only decodes Marcel.
 users['jonas'].value = User(...); // Only saves Jonas.
 ```
@@ -150,6 +153,12 @@ You can set the value by using the `.value` setter:
 
 ```dart
 chest.value = true;
+```
+
+Some `Reference`s have handy methods that you can use:
+
+```dart
+boolReference.toggle();
 ```
 
 ## Tapers
