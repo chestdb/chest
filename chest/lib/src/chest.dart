@@ -24,7 +24,6 @@ class Chest<T> implements Reference<T> {
   /// Creates a new [Chest].
   Chest(this.name, {required this.ifNew});
 
-  // TODO: Support mocking for boxes that are closed and then re-opened.
   static void mock<T>(String name, T value) {
     if (_mockBackends.containsKey(name)) {
       panic('Called Chest.mock, but chest "$name" is already mocked.');
@@ -49,8 +48,8 @@ class Chest<T> implements Reference<T> {
       _backend = _openedBackends[name]!.cast<T>(name);
     } else {
       _backend = await Backend.open(name, ifNew);
-      _openedBackends[name] = _backend!;
     }
+    _openedBackends[name] = _backend!;
   }
 
   Future<void> flush() async {
