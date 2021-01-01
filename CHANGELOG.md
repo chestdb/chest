@@ -1,3 +1,9 @@
+## 0.0.4-0
+
+* Separate creating `Chest`s and opening them.
+* Rename `Ref` to `Reference`.
+* Chest files now have magic bytes at the beginning.
+
 ## 0.0.3-0
 
 * Develop brand including color palette, font, and logo.
