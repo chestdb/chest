@@ -32,6 +32,12 @@ class Content {
 // Because the [Content] should be serializable even if `dart:core` tapers are
 // not registered, it doesn't expose types from `dart:core` to tape.
 
+final tapersForContent = <int, Taper<Object>>{
+  -1: TaperForContent(),
+  -2: TaperForUint8(),
+  -3: TaperForTypeCodes(),
+};
+
 class TaperForContent extends MapTaper<Content> {
   @override
   Map<Uint8, Object?> toMap(Content content) {
