@@ -230,6 +230,5 @@ class _TaperForSet<T> extends MapTaper<Set<T>> {
 }
 
 extension ChildrenOfSet<T> on Reference<Set<T>> {
-  Reference<T> contains(T value) =>
-      child(value, createImplicitly: false).exists();
+  bool contains(T value) => child(value, createImplicitly: false).exists;
 }
