@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'blocks.dart';
 import 'tapers.dart';
 import 'utils.dart';
 
@@ -50,6 +51,8 @@ class TaperForContent extends MapTaper<Content> {
     );
   }
 }
+
+final pathToValue = Path<Object?>([Uint8(0)]);
 
 class Uint8 {
   Uint8(this.value)
