@@ -45,6 +45,11 @@ class Backend<T> {
     await _storage.close();
   }
 
+  bool existsAt(Path<Object?> path) {
+    final actualPath = pathToValue.followedBy(path).serialize();
+    return _value.getAt(actualPath) != null;
+  }
+
   void setAt(Path<Object?> path, Object? value, bool createImplicitly) {
     final blockPath = path.serialize();
     final blockValue = value.toBlock();

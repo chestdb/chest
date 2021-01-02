@@ -75,6 +75,13 @@ class Chest<T> implements Reference<T> {
   }
 
   @override
+  bool get exists => _existsAt(Path.root());
+  bool _existsAt(Path<Object?> path) {
+    assert(isOpened);
+    return _backend!.existsAt(path);
+  }
+
+  @override
   set value(T value) => _setAt(Path.root(), value, true);
   void _setAt(Path<Object?> path, T value, bool createImplicitly) {
     assert(isOpened);
@@ -102,6 +109,8 @@ final _openedBackends = <String, Backend<dynamic>>{};
 /// A reference to an interior part of a [Chest].
 abstract class Reference<T> {
   Reference<R> child<R>(Object? key, {bool createImplicitly = false});
+
+  bool get exists;
   set value(T value);
   T get value;
   Stream<T?> watch();
@@ -122,6 +131,7 @@ class InteriorReference<T> implements Reference<T> {
     );
   }
 
+  bool get exists => chest._existsAt(path);
   set value(T value) => chest._setAt(path, value.toBlock(), createImplicitly);
   T get value => chest._getAt(path);
   Stream<T?> watch() => chest._watchAt(path);
