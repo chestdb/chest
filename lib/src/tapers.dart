@@ -292,3 +292,11 @@ class NoTaperForValueError extends ChestError {
       'There is no taper registered for serializing the value $value of type '
       '${value.runtimeType}.';
 }
+
+class NoTaperForTypeCodeError extends ChestError {
+  NoTaperForTypeCodeError(this.typeCode);
+
+  final int typeCode;
+
+  String toString() => 'No taper for type code $typeCode found.';
+}
