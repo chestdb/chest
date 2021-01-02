@@ -25,7 +25,7 @@ class Chest<T> implements Reference<T> {
   Chest(this.name, {required this.ifNew});
 
   static void mock<T>(String name, T value) {
-    if (_mockBackends.containsKey(name)) {
+    if (_mockedBackends.containsKey(name)) {
       panic('Called Chest.mock, but chest "$name" is already mocked.');
     }
     if (_openedBackends.isNotEmpty) {
@@ -33,7 +33,7 @@ class Chest<T> implements Reference<T> {
           'occur before opening the first chest.');
     }
     final updatable = UpdatableBlock(value.toBlock());
-    _mockBackends[name] = Backend<T>(updatable, DebugStorage(updatable));
+    _mockedBackends[name] = Backend<T>(updatable, DebugStorage(updatable));
   }
 
   final String name;
@@ -42,8 +42,8 @@ class Chest<T> implements Reference<T> {
   bool get isOpened => _backend != null;
 
   Future<void> open() async {
-    if (_mockBackends.containsKey(name)) {
-      _backend = _mockBackends[name]!.cast<T>(name);
+    if (_mockedBackends.containsKey(name)) {
+      _backend = _mockedBackends[name]!.cast<T>(name);
     } else if (_openedBackends.containsKey(name)) {
       _backend = _openedBackends[name]!.cast<T>(name);
     } else {
@@ -95,7 +95,7 @@ class Chest<T> implements Reference<T> {
   }
 }
 
-final _mockBackends = <String, Backend<dynamic>>{};
+final _mockedBackends = <String, Backend<dynamic>>{};
 final _openedBackends = <String, Backend<dynamic>>{};
 
 /// A reference to an interior part of a [Chest].
