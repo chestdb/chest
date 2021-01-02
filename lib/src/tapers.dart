@@ -94,6 +94,10 @@ class _Registry {
   final _tapersToTypeCodes = <Taper<dynamic>, int>{};
   final _typeCodesToTapers = <int, Taper<dynamic>>{};
   bool get hasTapers => _tapersToTypeCodes.isNotEmpty;
+  List<int> get nonLegacyTypeCodes => _typeCodesToTapers.entries
+      .where((it) => !it.value.isLegacy)
+      .map((it) => it.key)
+      .toList();
 
   /// A tree recreating Dart's type system. Given an object, we can walk down
   /// the tree at those nodes where the object matches the type. When we reach a
