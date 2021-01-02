@@ -70,8 +70,9 @@ class Chest<T> implements Reference<T> {
   }
 
   @override
-  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
-      _FieldRef<R>(this, Path([key]), createImplicitly);
+  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) {
+    return InteriorReference<R>(this, Path([key]), createImplicitly);
+  }
 
   @override
   set value(T value) => _setAt(Path.root(), value, true);
@@ -106,15 +107,20 @@ abstract class Reference<T> {
   Stream<T?> watch();
 }
 
-class _FieldRef<T> implements Reference<T> {
-  _FieldRef(this.chest, this.path, this.createImplicitly);
+class InteriorReference<T> implements Reference<T> {
+  InteriorReference(this.chest, this.path, this.createImplicitly);
 
   final Chest chest;
   final Path<Object?> path;
   final bool createImplicitly;
 
-  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) =>
-      _FieldRef(chest, Path<Object?>([...path.keys, key]), createImplicitly);
+  Reference<R> child<R>(Object? key, {bool createImplicitly = false}) {
+    return InteriorReference(
+      chest,
+      Path<Object?>([...path.keys, key]),
+      createImplicitly,
+    );
+  }
 
   set value(T value) => chest._setAt(path, value.toBlock(), createImplicitly);
   T get value => chest._getAt(path);
