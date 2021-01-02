@@ -196,6 +196,8 @@ class Path<T> {
             withoutFirst().startsWith(other.withoutFirst());
   }
 
+  Path<T> followedBy(Path<T> other) => Path([...keys, ...other.keys]);
+
   @override
   String toString() => isRoot ? '<root>' : keys.join('/');
 }
