@@ -29,6 +29,7 @@ extension TapersForForDartCore on TaperApi {
   Taper<Duration> forDuration() => _TaperForDuration();
   Taper<List<T>> forList<T>() => _TaperForList<T>();
   Taper<Map<K, V>> forMap<K, V>() => _TaperForMap<K, V>();
+  Taper<Set<T>> forSet<T>() => _TaperForSet<T>();
 }
 
 // "Don't use the Null type, unless your are positive that you don't want void."
@@ -215,4 +216,20 @@ class _TaperForMap<K, V> extends MapTaper<Map<K, V>> {
 
 extension ChildrenOfMap<K, V> on Reference<Map<K, V>> {
   Reference<V> operator [](K key) => child(key, createImplicitly: true);
+}
+
+class _TaperForSet<T> extends MapTaper<Set<T>> {
+  const _TaperForSet();
+
+  @override
+  Map<Object?, Object?> toMap(Set<T> value) =>
+      {for (final key in value) key: null};
+
+  @override
+  Set<T> fromMap(Map<Object?, Object?> map) => map.values.cast<T>().toSet();
+}
+
+extension ChildrenOfSet<T> on Reference<Set<T>> {
+  Reference<T> contains(T value) =>
+      child(value, createImplicitly: false).exists();
 }
