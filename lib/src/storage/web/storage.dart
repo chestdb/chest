@@ -8,6 +8,7 @@ class WebStorage implements Storage {
   @override
   Stream<Update> get updates => panic('WebStorage used.');
 
+  @override
   Future<UpdatableBlock?> getValue() async => panic('WebStorage used.');
 
   @override

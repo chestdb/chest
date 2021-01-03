@@ -65,19 +65,22 @@ class VmStorage implements Storage {
 
   final String name;
 
-  final _updatesController = StreamController<Update>.broadcast();
+  @override
   Stream<Update> get updates => _updatesController.stream;
+  final _updatesController = StreamController<Update>.broadcast();
 
   final Stream<Event> events;
   final void Function(Action action) sendAction;
   final void Function() dispose;
 
+  @override
   Future<UpdatableBlock?> getValue() async {
     sendAction(GetValueAction());
     final event = await events.waitFor<ValueEvent>();
     return event.value?.materialize();
   }
 
+  @override
   void setValue(Path<Block> path, Block value) {
     sendAction(SetValueAction(path: path, value: value));
   }
@@ -89,6 +92,7 @@ class VmStorage implements Storage {
     await events.waitFor<FlushedEvent>(withUuid(uuid));
   }
 
+  @override
   Future<UpdatableBlock> migrate() async {
     final uuid = _randomUuid();
     sendAction(MigrateAction(uuid, registry));
@@ -96,6 +100,7 @@ class VmStorage implements Storage {
     return event.value.materialize();
   }
 
+  @override
   Future<void> compact() async {
     final uuid = _randomUuid();
     sendAction(CompactAction(uuid));
