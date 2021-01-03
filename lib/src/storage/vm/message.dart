@@ -22,6 +22,12 @@ class FlushAction extends ActionWithUuid {
   FlushAction(String uuid) : super(uuid);
 }
 
+class MigrateAction extends ActionWithUuid {
+  MigrateAction(String uuid, this.registry) : super(uuid);
+
+  final Registry registry;
+}
+
 class CompactAction extends ActionWithUuid {
   CompactAction(String uuid) : super(uuid);
 }
@@ -44,6 +50,12 @@ class ValueEvent extends Event {
 
 class FlushedEvent extends EventWithUuid {
   FlushedEvent(String uuid) : super(uuid);
+}
+
+class MigratedEvent extends EventWithUuid {
+  MigratedEvent(String uuid, this.value) : super(uuid);
+
+  final TransferableUpdatableBlock value;
 }
 
 class CompactedEvent extends EventWithUuid {

@@ -38,6 +38,9 @@ class VmBackend {
     } else if (action is CompactAction) {
       _compact();
       sendEvent(CompactedEvent(action.uuid));
+    } else if (action is MigrateAction) {
+      final migratedValue = _migrate(action.registry);
+      sendEvent(MigratedEvent(action.uuid, migratedValue));
     } else if (action is CloseAction) {
       _close();
     } else {
@@ -78,7 +81,6 @@ class VmBackend {
       return;
     }
     _file.appendUpdate(ChestFileUpdate(path, value));
-    // TODO: As soon as a backend is used by multiple frontends, broadcast the value.
 
     if (_file.shouldBeCompacted) {
       _compact();
@@ -103,6 +105,15 @@ class VmBackend {
     _file.delete();
     newFile.renameTo(path);
     _file = newFile;
+  }
+
+  TransferableUpdatableBlock _migrate(Registry registry) {
+    final value =
+        _getValue() ?? panic('Attempted to migrate, but value is null.');
+    // TODO: Make this more efficient by only migrating the parts that need migration.
+    final migrated = value.getAtRoot().toObject(registry).toBlock(registry);
+    _replaceRootValue(migrated);
+    return UpdatableBlock(migrated).transferable();
   }
 
   void _flush() {

@@ -89,6 +89,13 @@ class VmStorage implements Storage {
     await events.waitFor<FlushedEvent>(withUuid(uuid));
   }
 
+  Future<UpdatableBlock> migrate() async {
+    final uuid = _randomUuid();
+    sendAction(MigrateAction(uuid, registry));
+    final event = await events.waitFor<MigratedEvent>(withUuid(uuid));
+    return event.value.materialize();
+  }
+
   Future<void> compact() async {
     final uuid = _randomUuid();
     sendAction(CompactAction(uuid));
