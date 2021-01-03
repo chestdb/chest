@@ -74,7 +74,7 @@ abstract class Taper<T> {
 ///     type hierarachy.
 ///
 /// To do that efficiently, it contains several data structures.
-final registry = _Registry();
+final registry = Registry();
 
 class _AnyTaper extends Taper<Object?> {
   @override
@@ -85,8 +85,8 @@ class _AnyTaper extends Taper<Object?> {
   TapeData toData(Object? value) => throw NoTaperForValueError(value);
 }
 
-class _Registry {
-  _Registry();
+class Registry {
+  Registry();
 
   /// Whether the [register] method has been called.
   var _isInitialized = false;

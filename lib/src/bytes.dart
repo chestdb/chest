@@ -286,9 +286,10 @@ class BytesBlockView extends BytesBlock implements BlockView {
 // Conversion methods between objects and [Block]s.
 
 extension ObjectToBlock on Object? {
-  Block toBlock() {
-    final taper = registry.valueToTaper(this);
-    final typeCode = registry.taperToTypeCode(taper)!;
+  Block toBlock([Registry? usedRegistry]) {
+    usedRegistry ??= registry;
+    final taper = usedRegistry.valueToTaper(this);
+    final typeCode = usedRegistry.taperToTypeCode(taper)!;
     final data = taper.toData(this);
     if (data is MapTapeData) {
       return MapBlock(
@@ -304,8 +305,9 @@ extension ObjectToBlock on Object? {
 }
 
 extension BlockToObject on Block {
-  Object toObject() {
-    final taper = registry.typeCodeToTaper(typeCode);
+  Object toObject([Registry? usedRegistry]) {
+    usedRegistry ??= registry;
+    final taper = usedRegistry.typeCodeToTaper(typeCode);
     if (taper == null) throw UnknownTypeCodeException(typeCode);
 
     TapeData data;
