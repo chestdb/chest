@@ -4,10 +4,10 @@ import 'content.dart';
 import 'tapers.dart';
 
 /// Main API for the tape part.
-const tape = TapeApi();
+const tape = TapeApi._();
 
 class TapeApi {
-  const TapeApi();
+  const TapeApi._();
 
   void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
     registry.register({
