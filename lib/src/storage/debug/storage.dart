@@ -22,6 +22,12 @@ class DebugStorage implements Storage {
   @override
   Future<void> flush() async {}
 
+  Future<UpdatableBlock> migrate() async {
+    _value.update(Path.root(), _value.getAtRoot().toObject().toBlock(),
+        createImplicitly: false);
+    return _value;
+  }
+
   @override
   Future<void> compact() async {}
 
