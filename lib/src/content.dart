@@ -29,36 +29,28 @@ class Content {
   // final Map<Path<Block>, int> references;
 }
 
+class TypeCodes {
+  TypeCodes(List<int> typeCodes)
+      : this.typeCodes = List.from(typeCodes)..sort();
+
+  final List<int> typeCodes;
+
+  bool operator ==(Object other) =>
+      other is TypeCodes && typeCodes.deeplyEquals(other.typeCodes);
+}
+
 // Because the [Content] should be serializable even if `dart:core` tapers are
 // not registered, it doesn't expose types from `dart:core` to tape.
 
-final tapersForContent = <int, Taper<Object>>{
-  -1: TaperForContent(),
-  -2: TaperForUint8(),
-  -3: TaperForTypeCodes(),
-};
-
-class TaperForContent extends MapTaper<Content> {
-  @override
-  Map<Uint8, Object?> toMap(Content content) {
+extension TapersForContent on TapersNamespace {
+  Map<int, Taper<Object?>> get forChest {
     return {
-      Uint8(0): content.value,
-      Uint8(2): content.typeCodes,
-      // Uint8(3): content.references,
+      -1: taper.forContent(),
+      -2: taper.forUint8(),
+      -3: taper.forTypeCodes(),
     };
   }
-
-  @override
-  Content fromMap(Map<Object?, Object?> fields) {
-    return Content(
-      value: fields[Uint8(0)],
-      typeCodes: fields[Uint8(2)] as TypeCodes,
-      // references: fields['references'] as Map<Path<Block>, int>,
-    );
-  }
 }
-
-final pathToValue = Path<Object?>([Uint8(0)]);
 
 class Uint8 {
   Uint8(this.value)
@@ -70,30 +62,42 @@ class Uint8 {
   bool operator ==(Object other) => other is Uint8 && value == other.value;
 }
 
-class TypeCodes {
-  TypeCodes(List<int> typeCodes)
-      : this.typeCodes = List.from(typeCodes)..sort();
-
-  final List<int> typeCodes;
-
-  bool operator ==(Object other) =>
-      other is TypeCodes && typeCodes.deeplyEquals(other.typeCodes);
+extension TaperForContent on TaperNamespace {
+  Taper<Content> forContent() {
+    return MapTaper(
+      toMap: (content) {
+        return {Uint8(0): content.value, Uint8(1): content.typeCodes};
+      },
+      fromMap: (map) {
+        return Content(
+          value: map[Uint8(0)],
+          typeCodes: map[Uint8(1)] as TypeCodes,
+        );
+      },
+    );
+  }
 }
 
-class TaperForUint8 extends BytesTaper<Uint8> {
-  @override
-  List<int> toBytes(Uint8 key) => [key.value];
+final pathToValue = Path<Object?>([Uint8(0)]);
 
-  @override
-  Uint8 fromBytes(List<int> bytes) => Uint8(bytes.first);
+extension TaperForUint8 on TaperNamespace {
+  Taper<Uint8> forUint8() {
+    return BytesTaper(
+      toBytes: (uint8) => [uint8.value],
+      fromBytes: (bytes) => Uint8(bytes.first),
+    );
+  }
 }
 
-class TaperForTypeCodes extends BytesTaper<TypeCodes> {
-  @override
-  List<int> toBytes(TypeCodes typeCodes) =>
-      Uint64List.fromList(typeCodes.typeCodes);
-
-  @override
-  TypeCodes fromBytes(List<int> bytes) =>
-      TypeCodes(Uint64List.view(Uint8List.fromList(bytes).buffer));
+extension TaperForTypeCodes on TaperNamespace {
+  Taper<TypeCodes> forTypeCodes() {
+    return BytesTaper(
+      toBytes: (typeCodes) {
+        return Uint64List.fromList(typeCodes.typeCodes).buffer.asUint8List();
+      },
+      fromBytes: (bytes) {
+        return TypeCodes(Uint8List.fromList(bytes).buffer.asUint64List());
+      },
+    );
+  }
 }

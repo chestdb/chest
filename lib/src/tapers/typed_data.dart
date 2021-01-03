@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'basics.dart';
 
-extension TapersPackageForDartTypedData on TapersForPackageApi {
+extension TapersForDartTypedData on TapersNamespace {
   Map<int, Taper<dynamic>> get forDartTypedData {
     return {
       -40: taper.forUint8List(),
@@ -10,16 +10,11 @@ extension TapersPackageForDartTypedData on TapersForPackageApi {
   }
 }
 
-extension TapersForForDartTypedData on TaperApi {
-  Taper<Uint8List> forUint8List() => _TaperForUint8List();
-}
-
-class _TaperForUint8List extends BytesTaper<Uint8List> {
-  const _TaperForUint8List();
-
-  @override
-  List<int> toBytes(Uint8List value) => value;
-
-  @override
-  Uint8List fromBytes(List<int> bytes) => Uint8List.fromList(bytes);
+extension TaperForUint8List on TaperNamespace {
+  Taper<Uint8List> forUint8List() {
+    return BytesTaper(
+      toBytes: (uint8List) => uint8List,
+      fromBytes: (bytes) => Uint8List.fromList(bytes),
+    );
+  }
 }

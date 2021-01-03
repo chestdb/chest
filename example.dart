@@ -52,42 +52,35 @@ class Pet {
 
 // User
 
-extension TaperForUser on TaperApi {
-  Taper<User> forUser() => _TaperForUser();
-}
-
-class _TaperForUser extends ClassTaper<User> {
-  Map<String, Object> toFields(User value) {
-    return {'name': value.name, 'pet': value.pet};
-  }
-
-  User fromFields(Map<String, Object?> fields) {
-    return User(fields['name'] as String, fields['pet'] as Pet);
+extension TaperForUser on TaperNamespace {
+  Taper<User> forUser() {
+    return ClassTaper(
+      toFields: (user) => {'name': user.name, 'pet': user.pet},
+      fromFields: (fields) => User(
+        fields['name'] as String,
+        fields['pet'] as Pet,
+      ),
+    );
   }
 }
 
-extension ChildrenOfUser on Reference<User> {
-  Reference<String> get name => child('name');
-  Reference<int> get age => child('age');
-  Reference<Pet> get pet => child('pet');
+extension ReferenceToUser on Reference<User> {
+  Reference<String> get name => field('name');
+  Reference<int> get age => field('age');
+  Reference<Pet> get pet => field('pet');
 }
 
-// // Pet
+// Pet
 
-extension TaperForPet on TaperApi {
-  Taper<Pet> forPet() => _TaperForPet();
-}
-
-class _TaperForPet extends ClassTaper<Pet> {
-  Map<String, Object> toFields(Pet value) {
-    return {'name': value.name};
-  }
-
-  Pet fromFields(Map<String, Object?> fields) {
-    return Pet(fields['name'] as String);
+extension TaperForPet on TaperNamespace {
+  Taper<Pet> forPet() {
+    return ClassTaper(
+      toFields: (pet) => {'name': pet.name},
+      fromFields: (fields) => Pet(fields['name'] as String),
+    );
   }
 }
 
-extension ChildrenOfPet on Reference<Pet> {
+extension ReferenceToPet on Reference<Pet> {
   Reference<String> get name => child('name');
 }

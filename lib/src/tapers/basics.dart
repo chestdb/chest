@@ -5,11 +5,11 @@ export '../chest.dart';
 export '../tapers.dart';
 
 /// A [Taper] that turns a value into a `Map<Object?, Object?>`.
-abstract class MapTaper<T> extends Taper<T> {
-  const MapTaper();
+class MapTaper<T> extends Taper<T> {
+  MapTaper({required this.toMap, required this.fromMap});
 
-  Map<Object?, Object?> toMap(T value);
-  T fromMap(Map<Object?, Object?> fields);
+  final Map<Object?, Object?> Function(T value) toMap;
+  final T Function(Map<Object?, Object?> fields) fromMap;
 
   TapeData toData(T value) {
     return MapTapeData(toMap(value).map((key, value) => MapEntry(key, value)));
@@ -24,11 +24,11 @@ abstract class MapTaper<T> extends Taper<T> {
 }
 
 /// A [Taper] that turns a value into a `List<int>` containing bytes.
-abstract class BytesTaper<T> extends Taper<T> {
-  const BytesTaper();
+class BytesTaper<T> extends Taper<T> {
+  BytesTaper({required this.toBytes, required this.fromBytes});
 
-  List<int> toBytes(T value);
-  T fromBytes(List<int> bytes);
+  final List<int> Function(T value) toBytes;
+  final T Function(List<int> bytes) fromBytes;
 
   TapeData toData(T value) => BytesTapeData(toBytes(value));
   T fromData(TapeData data) {
@@ -41,18 +41,23 @@ abstract class BytesTaper<T> extends Taper<T> {
 
 /// A [Taper] that turns an object into a `Map<String, Object?>`. Especially
 /// useful for classes.
-abstract class ClassTaper<T> extends MapTaper<T> {
-  const ClassTaper();
+class ClassTaper<T> extends MapTaper<T> {
+  ClassTaper({required this.toFields, required this.fromFields})
+      : super(
+          toMap: (value) => toFields(value),
+          fromMap: (map) {
+            if (map is! Map<String, Object?>) {
+              throw 'Expected class map to have String keys, but type is '
+                  "${map.runtimeType}. Here's the value: $map";
+            }
+            return fromFields(map);
+          },
+        );
 
-  Map<String, Object?> toFields(T value);
-  T fromFields(Map<String, Object?> fields);
+  final Map<String, Object?> Function(T value) toFields;
+  final T Function(Map<String, Object?> fields) fromFields;
+}
 
-  Map<Object?, Object?> toMap(T value) => toFields(value);
-  T fromMap(Map<Object?, Object?> map) {
-    if (map is! Map<String, Object?>) {
-      throw 'Expected class map to have String keys, but type is '
-          "${map.runtimeType}. Here's the value: $map";
-    }
-    return fromFields(map);
-  }
+extension ReferenceToClass on Reference<dynamic> {
+  field<T>(String name) => child(name) as T;
 }

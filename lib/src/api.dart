@@ -11,7 +11,7 @@ class TapeApi {
 
   void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
     registry.register({
-      ...tapersForContent,
+      ...tapers.forChest,
       ...typeCodesToTapers,
     });
   }
@@ -25,16 +25,14 @@ class TapeKey {
 
 const doNotTape = Object();
 
-/// Namespace for single, user-defined tapers.
-const taper = TaperApi();
+const taper = TaperNamespace._();
 
-class TaperApi {
-  const TaperApi();
+class TaperNamespace {
+  const TaperNamespace._();
 }
 
-/// Namespace for tapers for a package.
-const tapers = TapersForPackageApi();
+const tapers = TapersNamespace._();
 
-class TapersForPackageApi {
-  const TapersForPackageApi();
+class TapersNamespace {
+  const TapersNamespace._();
 }

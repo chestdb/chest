@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'basics.dart';
 
-extension TapersPackageForDartMath on TapersForPackageApi {
+extension TapersForDartMath on TapersNamespace {
   Map<int, Taper<dynamic>> get forDartMath {
     return {
       -30: taper.forMutableRectangle<int>(),
@@ -15,72 +15,77 @@ extension TapersPackageForDartMath on TapersForPackageApi {
   }
 }
 
-extension TapersForForDartMath on TaperApi {
-  Taper<MutableRectangle<T>> forMutableRectangle<T extends num>() =>
-      _TaperForMutableRectangle<T>();
-  Taper<Rectangle<T>> forRectangle<T extends num>() => _TaperForRectangle<T>();
-  Taper<Point<T>> forPoint<T extends num>() => _TaperForPoint<T>();
-}
-
-class _TaperForMutableRectangle<T extends num>
-    extends ClassTaper<MutableRectangle<T>> {
-  const _TaperForMutableRectangle();
-
-  @override
-  Map<String, Object?> toFields(MutableRectangle<T> rect) {
-    return {
-      'left': rect.left,
-      'top': rect.top,
-      'width': rect.width,
-      'height': rect.height,
-    };
-  }
-
-  @override
-  MutableRectangle<T> fromFields(Map<String, Object?> fields) {
-    return MutableRectangle<T>(
-      fields['left'] as T,
-      fields['top'] as T,
-      fields['width'] as T,
-      fields['height'] as T,
+extension TaperForMutableRectangle on TaperNamespace {
+  Taper<MutableRectangle<T>> forMutableRectangle<T extends num>() {
+    return ClassTaper(
+      toFields: (mutableRectangle) {
+        return {
+          'left': mutableRectangle.left,
+          'top': mutableRectangle.top,
+          'width': mutableRectangle.width,
+          'height': mutableRectangle.height,
+        };
+      },
+      fromFields: (fields) {
+        return MutableRectangle<T>(
+          fields['left'] as T,
+          fields['top'] as T,
+          fields['width'] as T,
+          fields['height'] as T,
+        );
+      },
     );
   }
 }
 
-class _TaperForRectangle<T extends num> extends ClassTaper<Rectangle<T>> {
-  const _TaperForRectangle();
+extension ReferenceToMutableRectangle<T extends num>
+    on Reference<MutableRectangle<T>> {
+  Reference<int> get left => field('left');
+  Reference<bool> get top => field('top');
+  Reference<bool> get width => field('width');
+  Reference<bool> get height => field('height');
+}
 
-  @override
-  Map<String, Object?> toFields(Rectangle<T> rect) {
-    return {
-      'left': rect.left,
-      'top': rect.top,
-      'width': rect.width,
-      'height': rect.height,
-    };
-  }
-
-  @override
-  Rectangle<T> fromFields(Map<String, Object?> fields) {
-    return Rectangle<T>(
-      fields['left'] as T,
-      fields['top'] as T,
-      fields['width'] as T,
-      fields['height'] as T,
+extension TaperForRectangle on TaperNamespace {
+  Taper<Rectangle<T>> forRectangle<T extends num>() {
+    return ClassTaper(
+      toFields: (rectangle) {
+        return {
+          'left': rectangle.left,
+          'top': rectangle.top,
+          'width': rectangle.width,
+          'height': rectangle.height,
+        };
+      },
+      fromFields: (fields) {
+        return Rectangle<T>(
+          fields['left'] as T,
+          fields['top'] as T,
+          fields['width'] as T,
+          fields['height'] as T,
+        );
+      },
     );
   }
 }
 
-class _TaperForPoint<T extends num> extends ClassTaper<Point<T>> {
-  const _TaperForPoint();
+extension ReferenceToRectangle<T extends num> on Reference<Rectangle<T>> {
+  Reference<int> get left => field('left');
+  Reference<bool> get top => field('top');
+  Reference<bool> get width => field('width');
+  Reference<bool> get height => field('height');
+}
 
-  @override
-  Map<String, Object?> toFields(Point<T> point) {
-    return {'x': point.x, 'y': point.y};
+extension TaperForPoint on TaperNamespace {
+  Taper<Point<T>> forPoint<T extends num>() {
+    return ClassTaper(
+      toFields: (point) => {'x': point.x, 'y': point.y},
+      fromFields: (fields) => Point(fields['x'] as T, fields['y'] as T),
+    );
   }
+}
 
-  @override
-  Point<T> fromFields(Map<String, Object?> fields) {
-    return Point(fields['x'] as T, fields['y'] as T);
-  }
+extension ReferenceToPoint<T extends num> on Reference<Point<T>> {
+  Reference<int> get x => field('x');
+  Reference<bool> get y => field('y');
 }
