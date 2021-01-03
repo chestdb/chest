@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'blocks.dart';
+import 'content.dart';
 import 'storage/storage.dart';
 import 'storage/web/storage.dart'
     if (dart.library.io) 'storage/vm/storage.dart';
+import 'tapers.dart';
 
 /// The [Backend] for chests that already supports saving and updating a value,
 /// but does not yet offer saving and maintaining `References` or saving which
@@ -24,15 +26,38 @@ class Backend<T> {
   Stream<Path<Block>> get _onValueChanged => _onValueChangedController.stream;
 
   static Future<Backend<T>> open<T>(String name, T Function() ifNew) async {
+    // Get the existing [Content] from the chest.
     final storage = await openStorage(name);
-    var initialValue = await storage.getValue();
-    if (initialValue == null) {
-      final newValue = (await ifNew()).toBlock();
-      storage.setValue(Path.root(), newValue);
-      initialValue = UpdatableBlock(newValue);
+    var updatableContent = await storage.getValue();
+
+    // Set default content if none exists.
+    if (updatableContent == null) {
+      final content = Content(
+        typeCodes: TypeCodes(registry.nonLegacyTypeCodes),
+        value: await ifNew(),
+      ).toBlock();
+      storage.setValue(Path.root(), content);
+      updatableContent = UpdatableBlock(content);
     }
-    // TODO: Check that the content is indeed of type T.
-    return Backend<T>(initialValue, storage);
+
+    // Ensure that the content is of the right type.
+    final value = updatableContent.getAt(Path([Uint8(0).toBlock()]));
+    if (value == null) {
+      throw CorruptedChestException('Chest content has no value.');
+    }
+    final taper = registry.typeCodeToTaper(value.typeCode);
+    if (taper == null) {
+      throw NoTaperForTypeCodeError(value.typeCode);
+    }
+    if (taper is! Taper<T>) {
+      throw ChestDoesNotMatchTypeError(
+        name: name,
+        expectedType: T,
+        actualType: taper.type,
+      );
+    }
+
+    return Backend<T>(updatableContent, storage);
   }
 
   Future<void> flush() => _storage.flush();
@@ -51,18 +76,20 @@ class Backend<T> {
   }
 
   void setAt(Path<Object?> path, Object? value, bool createImplicitly) {
-    final blockPath = path.serialize();
+    final actualPath = pathToValue.followedBy(path).serialize();
     final blockValue = value.toBlock();
-    _value.update(blockPath, blockValue, createImplicitly: createImplicitly);
-    _onValueChangedController.add(blockPath);
-    _storage.setValue(blockPath, blockValue);
+    _value.update(actualPath, blockValue, createImplicitly: createImplicitly);
+    _onValueChangedController.add(actualPath);
+    _storage.setValue(actualPath, blockValue);
   }
 
-  R? getAt<R>(Path<Object?> path) =>
-      _value.getAt(path.serialize())?.toObject() as R;
+  R? getAt<R>(Path<Object?> path) {
+    final actualPath = pathToValue.followedBy(path).serialize();
+    return _value.getAt(actualPath)?.toObject() as R;
+  }
 
   Stream<R?> watchAt<R>(Path<Object?> path) {
-    final blockPath = path.serialize();
+    final blockPath = pathToValue.followedBy(path).serialize();
     return _onValueChanged
         .where((changedPath) {
           // Only deserialize on those events that could have changed the value.
