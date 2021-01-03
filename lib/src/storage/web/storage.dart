@@ -20,5 +20,8 @@ class WebStorage implements Storage {
   Future<void> compact() async => panic('WebStorage used.');
 
   @override
+  Future<UpdatableBlock> migrate() async => panic('Web storage used.');
+
+  @override
   Future<void> close() async => panic('WebStorage used.');
 }
