@@ -83,14 +83,14 @@ class Chest<T> implements Reference<T> {
 
   @override
   set value(T value) => _setAt(Path.root(), value, true);
-  void _setAt(Path<Object?> path, T value, bool createImplicitly) {
+  void _setAt<R>(Path<Object?> path, R value, bool createImplicitly) {
     assert(isOpened);
     _backend!.setAt(path, value, createImplicitly);
   }
 
   @override
-  T get value => _getAt(Path.root());
-  T _getAt(Path<Object?> path) {
+  T get value => _getAt<T>(Path.root());
+  R _getAt<R>(Path<Object?> path) {
     assert(isOpened);
     return _backend!.getAt(path);
   }
@@ -132,7 +132,7 @@ class InteriorReference<T> implements Reference<T> {
   }
 
   bool get exists => chest._existsAt(path);
-  set value(T value) => chest._setAt(path, value.toBlock(), createImplicitly);
-  T get value => chest._getAt(path);
+  set value(T value) => chest._setAt(path, value, createImplicitly);
+  T get value => chest._getAt<T>(path);
   Stream<T?> watch() => chest._watchAt(path);
 }

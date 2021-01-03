@@ -59,5 +59,5 @@ class ClassTaper<T> extends MapTaper<T> {
 }
 
 extension ReferenceToClass on Reference<dynamic> {
-  field<T>(String name) => child(name) as T;
+  Reference<T> field<T>(String name) => child<T>(name);
 }

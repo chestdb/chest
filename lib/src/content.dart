@@ -42,7 +42,7 @@ class TypeCodes {
 // Because the [Content] should be serializable even if `dart:core` tapers are
 // not registered, it doesn't expose types from `dart:core` to tape.
 
-extension TapersForContent on TapersNamespace {
+extension TapersForChest on TapersNamespace {
   Map<int, Taper<Object?>> get forChest {
     return {
       -1: taper.forContent(),
