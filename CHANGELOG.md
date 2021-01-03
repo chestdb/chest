@@ -2,6 +2,8 @@
 
 * Separate creating `Chest`s and opening them.
 * Rename `Ref` to `Reference`.
+* Make defining tapers more concise.
+* Support migration of tapers.
 * Chest files now have magic bytes at the beginning.
 
 ## 0.0.3-0
