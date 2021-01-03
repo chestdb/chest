@@ -40,8 +40,25 @@ class Backend<T> {
       updatableContent = UpdatableBlock(content);
     }
 
+    // Migrate tapers if necessary.
+    final typeCodesBlock = updatableContent.getAt(pathToTypeCodes.serialize());
+    if (typeCodesBlock == null) {
+      throw CorruptedChestException('Chest content has no type codes.');
+    }
+    final typeCodes = typeCodesBlock.toObject();
+    if (typeCodes is! TypeCodes) {
+      throw CorruptedChestException(
+          "Chest content's type codes are not of type TypeCodes.");
+    }
+    if (typeCodes != TypeCodes(registry.nonLegacyTypeCodes)) {
+      // Since the last time the chest was opened, the registered tapers
+      // changed. Re-encode the chest's value so that all values are migrated to
+      // new tapers.
+      updatableContent = await storage.migrate();
+    }
+
     // Ensure that the content is of the right type.
-    final value = updatableContent.getAt(Path([Uint8(0).toBlock()]));
+    final value = updatableContent.getAt(pathToValue.serialize());
     if (value == null) {
       throw CorruptedChestException('Chest content has no value.');
     }

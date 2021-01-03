@@ -79,6 +79,7 @@ extension TaperForContent on TaperNamespace {
 }
 
 final pathToValue = Path<Object?>([Uint8(0)]);
+final pathToTypeCodes = Path<Object?>([Uint8(1)]);
 
 extension TaperForUint8 on TaperNamespace {
   Taper<Uint8> forUint8() {
