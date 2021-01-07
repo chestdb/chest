@@ -37,30 +37,31 @@ class BytesTapeData extends TapeData {
 ///   1: taper.forPet(),
 /// });
 /// ```
-abstract class Taper<T> {
-  const Taper();
+class Taper<T> {
+  const Taper({
+    required this.toData,
+    required this.fromData,
+    required this.isLegacy,
+  });
 
   Type get type => T;
   bool matches(Object? value) => value is T;
-  bool get isLegacy => false;
   void _registerForTypeCode(int typeCode) =>
       registry._registerSingle(typeCode, this);
 
   /// Turns the [value] into [TapeData].
-  TapeData toData(T value);
+  final TapeData Function(T value) toData;
 
   /// Turns [TapeData] back into a value of type [T].
-  T fromData(TapeData data);
+  final T Function(TapeData data) fromData;
+
+  final bool isLegacy;
 
   @override
-  operator ==(Object other) =>
-      identical(this, other) ||
-      runtimeType == other.runtimeType &&
-          other is Taper<T> &&
-          type == other.type;
+  operator ==(Object other) => identical(this, other);
 
   @override
-  int get hashCode => hash2(runtimeType, type);
+  int get hashCode => super.hashCode;
 }
 
 /// The [registry] contains all registered [Taper]s. It makes these
@@ -76,14 +77,11 @@ abstract class Taper<T> {
 /// To do that efficiently, it contains several data structures.
 final registry = Registry();
 
-class _AnyTaper extends Taper<Object?> {
-  @override
-  Object? fromData(TapeData data) =>
-      panic("_AnyTaper.fromData should never be called.");
-
-  @override
-  TapeData toData(Object? value) => throw NoTaperForValueError(value);
-}
+final _anyTaper = Taper(
+  toData: (value) => throw NoTaperForValueError(value),
+  fromData: (_) => panic("The root taper's fromData should never be used"),
+  isLegacy: false,
+);
 
 class Registry {
   Registry();
@@ -102,7 +100,7 @@ class Registry {
   /// A tree recreating Dart's type system. Given an object, we can walk down
   /// the tree at those nodes where the object matches the type. When we reach a
   /// leaf, we found the most specialized type that we know about.
-  final _typeTree = _Type<Object?>(_AnyTaper());
+  final _typeTree = _Type<Object?>(_anyTaper);
 
   /// Shortcuts into the tree.
   final _shortcutsIntoTheTree = <Type, _Type<dynamic>>{};
@@ -161,7 +159,7 @@ class Registry {
       panic("Shortcut into the tree for ${value.runtimeType} is to a taper "
           "that's not for ${value.runtimeType}, but for ${type.type}.");
     }
-    if (taper == _AnyTaper()) {
+    if (taper == _anyTaper) {
       throw NoTaperForValueError(value);
     }
     if (!_debugIsSameType(value.runtimeType, type.type)) {

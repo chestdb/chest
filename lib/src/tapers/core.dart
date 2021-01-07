@@ -138,17 +138,17 @@ extension TaperForBigInt on TaperNamespace {
 
 extension TaperForDateTime on TaperNamespace {
   Taper<DateTime> forDateTime() {
-    return ClassTaper(
-      toFields: (dateTime) {
+    return MapTaper(
+      toMap: (dateTime) {
         return {
           'isUtc': dateTime.isUtc,
           'microsecondsSinceEpoch': dateTime.microsecondsSinceEpoch,
         };
       },
-      fromFields: (fields) {
+      fromMap: (map) {
         return DateTime.fromMicrosecondsSinceEpoch(
-          fields['microsecondsSinceEpoch'] as int,
-          isUtc: fields['isUtc'] as bool,
+          map['microsecondsSinceEpoch'] as int,
+          isUtc: map['isUtc'] as bool,
         );
       },
     );
@@ -156,23 +156,23 @@ extension TaperForDateTime on TaperNamespace {
 }
 
 extension ReferenceToDateTime on Reference<DateTime> {
-  Reference<int> get microsecondsSinceEpoch => field('microsecondsSinceEpoch');
-  Reference<bool> get isUtc => field('isUtc');
+  Reference<int> get microsecondsSinceEpoch => child('microsecondsSinceEpoch');
+  Reference<bool> get isUtc => child('isUtc');
 }
 
 extension TaperForDuration on TaperNamespace {
   Taper<Duration> forDuration() {
-    return ClassTaper(
-      toFields: (duration) => {'microseconds': duration.inMicroseconds},
-      fromFields: (fields) {
-        return Duration(microseconds: fields['microseconds'] as int);
+    return MapTaper(
+      toMap: (duration) => {'microseconds': duration.inMicroseconds},
+      fromMap: (map) {
+        return Duration(microseconds: map['microseconds'] as int);
       },
     );
   }
 }
 
 extension ReferenceToDuration on Reference<Duration> {
-  Reference<int> get microseconds => field('microseconds');
+  Reference<int> get microseconds => child('microseconds');
 }
 
 extension TaperForList on TaperNamespace {

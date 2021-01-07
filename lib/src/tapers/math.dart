@@ -17,8 +17,8 @@ extension TapersForDartMath on TapersNamespace {
 
 extension TaperForMutableRectangle on TaperNamespace {
   Taper<MutableRectangle<T>> forMutableRectangle<T extends num>() {
-    return ClassTaper(
-      toFields: (mutableRectangle) {
+    return MapTaper(
+      toMap: (mutableRectangle) {
         return {
           'left': mutableRectangle.left,
           'top': mutableRectangle.top,
@@ -26,12 +26,12 @@ extension TaperForMutableRectangle on TaperNamespace {
           'height': mutableRectangle.height,
         };
       },
-      fromFields: (fields) {
+      fromMap: (map) {
         return MutableRectangle<T>(
-          fields['left'] as T,
-          fields['top'] as T,
-          fields['width'] as T,
-          fields['height'] as T,
+          map['left'] as T,
+          map['top'] as T,
+          map['width'] as T,
+          map['height'] as T,
         );
       },
     );
@@ -40,16 +40,16 @@ extension TaperForMutableRectangle on TaperNamespace {
 
 extension ReferenceToMutableRectangle<T extends num>
     on Reference<MutableRectangle<T>> {
-  Reference<int> get left => field('left');
-  Reference<bool> get top => field('top');
-  Reference<bool> get width => field('width');
-  Reference<bool> get height => field('height');
+  Reference<int> get left => child('left');
+  Reference<bool> get top => child('top');
+  Reference<bool> get width => child('width');
+  Reference<bool> get height => child('height');
 }
 
 extension TaperForRectangle on TaperNamespace {
   Taper<Rectangle<T>> forRectangle<T extends num>() {
-    return ClassTaper(
-      toFields: (rectangle) {
+    return MapTaper(
+      toMap: (rectangle) {
         return {
           'left': rectangle.left,
           'top': rectangle.top,
@@ -57,12 +57,12 @@ extension TaperForRectangle on TaperNamespace {
           'height': rectangle.height,
         };
       },
-      fromFields: (fields) {
+      fromMap: (map) {
         return Rectangle<T>(
-          fields['left'] as T,
-          fields['top'] as T,
-          fields['width'] as T,
-          fields['height'] as T,
+          map['left'] as T,
+          map['top'] as T,
+          map['width'] as T,
+          map['height'] as T,
         );
       },
     );
@@ -70,22 +70,22 @@ extension TaperForRectangle on TaperNamespace {
 }
 
 extension ReferenceToRectangle<T extends num> on Reference<Rectangle<T>> {
-  Reference<int> get left => field('left');
-  Reference<bool> get top => field('top');
-  Reference<bool> get width => field('width');
-  Reference<bool> get height => field('height');
+  Reference<int> get left => child('left');
+  Reference<bool> get top => child('top');
+  Reference<bool> get width => child('width');
+  Reference<bool> get height => child('height');
 }
 
 extension TaperForPoint on TaperNamespace {
   Taper<Point<T>> forPoint<T extends num>() {
-    return ClassTaper(
-      toFields: (point) => {'x': point.x, 'y': point.y},
-      fromFields: (fields) => Point(fields['x'] as T, fields['y'] as T),
+    return MapTaper(
+      toMap: (point) => {'x': point.x, 'y': point.y},
+      fromMap: (map) => Point(map['x'] as T, map['y'] as T),
     );
   }
 }
 
 extension ReferenceToPoint<T extends num> on Reference<Point<T>> {
-  Reference<int> get x => field('x');
-  Reference<bool> get y => field('y');
+  Reference<int> get x => child('x');
+  Reference<bool> get y => child('y');
 }
