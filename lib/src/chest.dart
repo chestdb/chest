@@ -32,8 +32,7 @@ class Chest<T> implements Reference<T> {
       panic('Called Chest.mock after you opened a chest. All mock calls should '
           'occur before opening the first chest.');
     }
-    final updatable = UpdatableBlock(value.toBlock());
-    _mockedBackends[name] = Backend<T>(updatable, DebugStorage(updatable));
+    _mockedBackends[name] = Backend.mock<T>(name, value);
   }
 
   final String name;

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:chest/src/storage/debug/storage.dart';
+
 import 'blocks.dart';
 import 'content.dart';
 import 'storage/storage.dart';
@@ -25,7 +27,10 @@ class Backend<T> {
   Type get _type => T;
   Stream<Path<Block>> get _onValueChanged => _onValueChangedController.stream;
 
-  static Future<Backend<T>> open<T>(String name, T Function() ifNew) async {
+  static Future<Backend<T>> open<T>(
+    String name,
+    FutureOr<T> Function() ifNew,
+  ) async {
     // Get the existing [Content] from the chest.
     final storage = await openStorage(name);
     var updatableContent = await storage.getValue();
@@ -50,10 +55,9 @@ class Backend<T> {
       throw CorruptedChestException(
           "Chest content's type codes are not of type TypeCodes.");
     }
+    // Migrate if the registered tapers changed since the last time the chest
+    // was opened.
     if (typeCodes != TypeCodes(registry.nonLegacyTypeCodes)) {
-      // Since the last time the chest was opened, the registered tapers
-      // changed. Re-encode the chest's value so that all values are migrated to
-      // new tapers.
       updatableContent = await storage.migrate();
     }
 
@@ -75,6 +79,15 @@ class Backend<T> {
     }
 
     return Backend<T>(updatableContent, storage);
+  }
+
+  static Backend<T> mock<T>(String name, T value) {
+    final content = Content(
+      typeCodes: TypeCodes(registry.nonLegacyTypeCodes),
+      value: value,
+    );
+    final updatableContent = UpdatableBlock(content.toBlock());
+    return Backend<T>(updatableContent, DebugStorage(updatableContent));
   }
 
   Future<void> flush() => _storage.flush();
