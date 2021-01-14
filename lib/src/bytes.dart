@@ -294,7 +294,12 @@ extension ObjectToBlock on Object? {
     if (data is MapTapeData) {
       return MapBlock(
         typeCode,
-        data.map.map((key, value) => MapEntry(key.toBlock(), value.toBlock())),
+        data.map.map((key, value) {
+          return MapEntry(
+            key.toBlock(usedRegistry),
+            value.toBlock(usedRegistry),
+          );
+        }),
       );
     } else if (data is BytesTapeData) {
       return BytesBlock(typeCode, data.bytes);
@@ -313,12 +318,12 @@ extension BlockToObject on Block {
     TapeData data;
     Block this_ = this;
     if (this_ is MapBlock) {
-      data = MapTapeData(this_.entries
-          .map((entry) => MapEntry(
-                entry.key.toObject(),
-                entry.value.toObject(),
-              ))
-          .toMap());
+      data = MapTapeData(this_.entries.map((entry) {
+        return MapEntry(
+          entry.key.toObject(usedRegistry),
+          entry.value.toObject(usedRegistry),
+        );
+      }).toMap());
     } else if (this_ is BytesBlock) {
       data = BytesTapeData(this_.bytes);
     } else {
