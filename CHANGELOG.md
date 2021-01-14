@@ -5,11 +5,13 @@
 * Make defining tapers more concise.
 * Support migration of tapers.
 * Chest files now have magic bytes at the beginning.
+* Prepare for code generation.
+* Better error handling in isolate.
 
 ## 0.0.3-0
 
 * Develop brand including color palette, font, and logo.
-* Use more efficient `TransferableTypedData` for sending bytes between `Isolate`s.
+* Use more efficient `TransferableTypedData` for sending bytes between isolates.
 * Support manually compacting chests.
 * Revise readme, adding documentation on tapers.
 
