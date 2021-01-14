@@ -10,11 +10,16 @@ extension TapersForDartTypedData on TapersNamespace {
   }
 }
 
-extension TaperForUint8List on TaperNamespace {
-  Taper<Uint8List> forUint8List() {
-    return BytesTaper(
-      toBytes: (uint8List) => uint8List,
-      fromBytes: (bytes) => Uint8List.fromList(bytes),
-    );
-  }
+extension TaperForUint8ListExtension on TaperNamespace {
+  Taper<Uint8List> forUint8List() => const TaperForUint8List();
+}
+
+class TaperForUint8List extends BytesTaper<Uint8List> {
+  const TaperForUint8List();
+
+  @override
+  List<int> toBytes(Uint8List uint8List) => uint8List;
+
+  @override
+  Uint8List fromBytes(List<int> bytes) => Uint8List.fromList(bytes);
 }

@@ -37,12 +37,8 @@ class BytesTapeData extends TapeData {
 ///   1: taper.forPet(),
 /// });
 /// ```
-class Taper<T> {
-  const Taper({
-    required this.toData,
-    required this.fromData,
-    required this.isLegacy,
-  });
+abstract class Taper<T> {
+  const Taper();
 
   Type get type => T;
   bool matches(Object? value) => value is T;
@@ -50,12 +46,12 @@ class Taper<T> {
       registry._registerSingle(typeCode, this);
 
   /// Turns the [value] into [TapeData].
-  final TapeData Function(T value) toData;
+  TapeData toData(T value);
 
   /// Turns [TapeData] back into a value of type [T].
-  final T Function(TapeData data) fromData;
+  T fromData(TapeData data);
 
-  final bool isLegacy;
+  bool get isLegacy => false;
 
   @override
   operator ==(Object other) => identical(this, other);
@@ -77,11 +73,18 @@ class Taper<T> {
 /// To do that efficiently, it contains several data structures.
 final registry = Registry();
 
-final _anyTaper = Taper(
-  toData: (value) => throw NoTaperForValueError(value),
-  fromData: (_) => panic("The root taper's fromData should never be used"),
-  isLegacy: false,
-);
+class _AnyTaper extends Taper {
+  const _AnyTaper();
+
+  @override
+  TapeData toData(value) => throw NoTaperForValueError(value);
+
+  @override
+  fromData(TapeData data) =>
+      panic("The root taper's fromData should never be used");
+}
+
+final _anyTaper = const _AnyTaper();
 
 class Registry {
   Registry();
@@ -144,7 +147,7 @@ class Registry {
   Taper<dynamic>? typeCodeToTaper(int typeCode) => _typeCodesToTapers[typeCode];
 
   /// Finds an adapter for serializing the [value].
-  Taper<Object?> valueToTaper<T>(T value) {
+  Taper<T> valueToTaper<T>(T value) {
     // Start at the root node of the type tree or a shortcut, if available.
     // Then, repeatedly follow the first subtype that matches the tapers value.
     var type = _shortcutsIntoTheTree[value.runtimeType] ?? _typeTree;
@@ -169,7 +172,7 @@ class Registry {
 
     // Make lookup faster for the next time.
     _shortcutsIntoTheTree[value.runtimeType] = type;
-    return taper;
+    return taper as Taper<T>;
   }
 
   static bool _debugIsSameType(Type runtimeType, Type staticType) {

@@ -62,43 +62,53 @@ class Uint8 {
   bool operator ==(Object other) => other is Uint8 && value == other.value;
 }
 
-extension TaperForContent on TaperNamespace {
-  Taper<Content> forContent() {
-    return MapTaper(
-      toMap: (content) {
-        return {Uint8(0): content.value, Uint8(1): content.typeCodes};
-      },
-      fromMap: (map) {
-        return Content(
-          value: map[Uint8(0)],
-          typeCodes: map[Uint8(1)] as TypeCodes,
-        );
-      },
-    );
+extension TaperForContentExtension on TaperNamespace {
+  Taper<Content> forContent() => const TaperForContent();
+}
+
+class TaperForContent extends MapTaper<Content> {
+  const TaperForContent();
+
+  @override
+  Map<Object?, Object?> toMap(Content content) {
+    return {Uint8(0): content.value, Uint8(1): content.typeCodes};
+  }
+
+  @override
+  Content fromMap(Map<Object?, Object?> map) {
+    return Content(value: map[Uint8(0)], typeCodes: map[Uint8(1)] as TypeCodes);
   }
 }
 
 final pathToValue = Path<Object?>([Uint8(0)]);
 final pathToTypeCodes = Path<Object?>([Uint8(1)]);
 
-extension TaperForUint8 on TaperNamespace {
-  Taper<Uint8> forUint8() {
-    return BytesTaper(
-      toBytes: (uint8) => [uint8.value],
-      fromBytes: (bytes) => Uint8(bytes.first),
-    );
-  }
+extension TaperForUint8Extension on TaperNamespace {
+  Taper<Uint8> forUint8() => const TaperForUint8();
 }
 
-extension TaperForTypeCodes on TaperNamespace {
-  Taper<TypeCodes> forTypeCodes() {
-    return BytesTaper(
-      toBytes: (typeCodes) {
-        return Uint64List.fromList(typeCodes.typeCodes).buffer.asUint8List();
-      },
-      fromBytes: (bytes) {
-        return TypeCodes(Uint8List.fromList(bytes).buffer.asUint64List());
-      },
-    );
-  }
+class TaperForUint8 extends BytesTaper<Uint8> {
+  const TaperForUint8();
+
+  @override
+  List<int> toBytes(Uint8 uint8) => [uint8.value];
+
+  @override
+  Uint8 fromBytes(List<int> bytes) => Uint8(bytes.first);
+}
+
+extension TaperForTypeCodesExtension on TaperNamespace {
+  Taper<TypeCodes> forTypeCodes() => const TaperForTypeCodes();
+}
+
+class TaperForTypeCodes extends BytesTaper<TypeCodes> {
+  const TaperForTypeCodes();
+
+  @override
+  List<int> toBytes(TypeCodes typeCodes) =>
+      Uint64List.fromList(typeCodes.typeCodes).buffer.asUint8List();
+
+  @override
+  TypeCodes fromBytes(List<int> bytes) =>
+      TypeCodes(Uint8List.fromList(bytes).buffer.asUint64List());
 }

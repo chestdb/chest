@@ -5,8 +5,9 @@ void main() async {
     ...tapers.forDartCore,
     ...tapers.forDartMath,
     ...tapers.forDartTypedData,
-    0: taper.forUser(),
-    1: taper.forPet(),
+    0: taper.forUser().v0,
+    // 1: taper.forUser().v1,
+    2: taper.forPet().v0,
     // 2: legacyTaper.forUser().v1,
   });
 
@@ -29,17 +30,23 @@ void main() async {
   await foo.close();
 }
 
-@tape
+@tape({
+  v0: {#name, #pet},
+  // v1: {#age, #name, #pet},
+})
 class User {
   User(this.name, this.pet);
 
   final String name;
   final Pet pet;
+  // final double age;
 
   String toString() => 'User($name, $pet)';
 }
 
-@tape
+@tape({
+  v0: {#name},
+})
 class Pet {
   Pet(this.name);
 
@@ -52,33 +59,50 @@ class Pet {
 
 // User
 
-extension TaperForUser on TaperNamespace {
-  Taper<User> forUser() {
-    return ClassTaper(
-      toFields: (user) => {'name': user.name, 'pet': user.pet},
-      fromFields: (fields) => User(
-        fields['name'] as String,
-        fields['pet'] as Pet,
-      ),
-    );
-  }
+extension TaperForUserExtension on TaperNamespace {
+  VersionedTapersForUser forUser() => VersionedTapersForUser();
+}
+
+class VersionedTapersForUser {
+  Taper<User> get v0 => TaperForUserV0();
+}
+
+class TaperForUserV0 extends MapTaper<User> {
+  const TaperForUserV0();
+
+  @override
+  Map<Object?, Object?> toMap(User user) =>
+      {'name': user.name, 'pet': user.pet};
+
+  @override
+  User fromMap(Map<Object?, Object?> map) =>
+      User(map['name'] as String, map['pet'] as Pet);
 }
 
 extension ReferenceToUser on Reference<User> {
-  Reference<String> get name => field('name');
-  Reference<int> get age => field('age');
-  Reference<Pet> get pet => field('pet');
+  Reference<String> get name => child('name');
+  Reference<int> get age => child('age');
+  Reference<Pet> get pet => child('pet');
 }
 
 // Pet
 
-extension TaperForPet on TaperNamespace {
-  Taper<Pet> forPet() {
-    return ClassTaper(
-      toFields: (pet) => {'name': pet.name},
-      fromFields: (fields) => Pet(fields['name'] as String),
-    );
-  }
+extension TaperForPetExtension on TaperNamespace {
+  VersionedTapersForPet forPet() => VersionedTapersForPet();
+}
+
+class VersionedTapersForPet {
+  Taper<Pet> get v0 => TaperForPetV0();
+}
+
+class TaperForPetV0 extends MapTaper<Pet> {
+  const TaperForPetV0();
+
+  @override
+  Map<Object?, Object?> toMap(Pet pet) => {'name': pet.name};
+
+  @override
+  Pet fromMap(Map<Object?, Object?> map) => Pet(map['name'] as String);
 }
 
 extension ReferenceToPet on Reference<Pet> {
