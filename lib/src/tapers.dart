@@ -1,5 +1,3 @@
-import 'package:more/more.dart';
-
 import 'utils.dart';
 
 export 'tapers/basics.dart';
@@ -143,8 +141,17 @@ class Registry {
     });
   }
 
-  int? taperToTypeCode(Taper<dynamic> taper) => _tapersToTypeCodes[taper];
-  Taper<dynamic>? typeCodeToTaper(int typeCode) => _typeCodesToTapers[typeCode];
+  int? taperToTypeCode(Taper<dynamic> taper) {
+    assert(_isInitialized,
+        'Called taperToTypeCode, but tape is not initialized yet.');
+    return _tapersToTypeCodes[taper];
+  }
+
+  Taper<dynamic>? typeCodeToTaper(int typeCode) {
+    assert(_isInitialized,
+        'Called typeCodeToTaper, but tape is not initialized yet.');
+    return _typeCodesToTapers[typeCode];
+  }
 
   /// Finds an adapter for serializing the [value].
   Taper<T> valueToTaper<T>(T value) {
