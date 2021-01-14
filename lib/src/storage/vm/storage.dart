@@ -47,19 +47,16 @@ class VmStorage implements Storage {
     final answer = await incoming.first as SetupAnswer;
     return VmStorage._(
       name,
-      events: incoming.cast<Event>(),
-      sendAction: answer.sendPort.send,
-      dispose: () {
-        answer.sendPort.send(CloseAction());
-        receivePort.close();
-      },
+      incomingMessages: incoming.cast<EventMessage>(),
+      sendMessage: answer.sendPort.send,
+      dispose: () => receivePort.close(),
     );
   }
 
   VmStorage._(
     this.name, {
-    required this.events,
-    required this.sendAction,
+    required this.incomingMessages,
+    required this.sendMessage,
     required this.dispose,
   });
 
@@ -69,46 +66,53 @@ class VmStorage implements Storage {
   Stream<Update> get updates => _updatesController.stream;
   final _updatesController = StreamController<Update>.broadcast();
 
-  final Stream<Event> events;
-  final void Function(Action action) sendAction;
+  final Stream<EventMessage> incomingMessages;
+  final void Function(ActionMessage action) sendMessage;
   final void Function() dispose;
+
+  Future<E> _send<E extends Event>(Action action) async {
+    final uuid = _randomUuid();
+    sendMessage(ActionMessage(uuid: uuid, action: action));
+    final answer =
+        await incomingMessages.firstWhere((message) => message.uuid == uuid);
+    final event = answer.event;
+    if (event is ErrorEvent) {
+      throw event.error;
+    }
+    if (event is! E) {
+      panic("Cast of received event failed. Expected $E, but was "
+          "${event.runtimeType}");
+    }
+    return event;
+  }
 
   @override
   Future<UpdatableBlock?> getValue() async {
-    sendAction(GetValueAction());
-    final event = await events.waitFor<ValueEvent>();
+    print('Sending GetValueAction');
+    final event = await _send<ValueEvent>(GetValueAction());
     return event.value?.materialize();
   }
 
   @override
-  void setValue(Path<Block> path, Block value) {
-    sendAction(SetValueAction(path: path, value: value));
+  Future<void> setValue(Path<Block> path, Block value) async {
+    await _send<ValueSetEvent>(SetValueAction(path: path, value: value));
   }
 
   @override
-  Future<void> flush() async {
-    final uuid = _randomUuid();
-    sendAction(FlushAction(uuid));
-    await events.waitFor<FlushedEvent>(withUuid(uuid));
-  }
+  Future<void> flush() async => await _send<FlushedEvent>(FlushAction());
 
   @override
   Future<UpdatableBlock> migrate() async {
-    final uuid = _randomUuid();
-    sendAction(MigrateAction(uuid, registry));
-    final event = await events.waitFor<MigratedEvent>(withUuid(uuid));
+    final event = await _send<MigratedEvent>(MigrateAction(registry: registry));
     return event.value.materialize();
   }
 
   @override
-  Future<void> compact() async {
-    final uuid = _randomUuid();
-    sendAction(CompactAction(uuid));
-    await events.waitFor<CompactedEvent>(withUuid(uuid));
-  }
+  Future<void> compact() async => await _send<CompactedEvent>(CompactAction());
 
   @override
   Future<void> close() async {
+    await _send<ClosedEvent>(CloseAction());
     dispose();
   }
 }
@@ -135,11 +139,9 @@ Future<void> _runBackend(SetupInfo info) async {
   // actions.
   VmBackend(
     name: info.name,
-    incomingActions: receivePort.cast<Action>(),
-    sendEvent: info.sendPort.send,
-    dispose: () {
-      receivePort.close();
-    },
+    incomingMessages: receivePort.cast<ActionMessage>(),
+    sendMessage: info.sendPort.send,
+    dispose: () => receivePort.close(),
   );
 }
 
@@ -161,6 +163,3 @@ String _randomUuid() {
   }
   return buffer.toString();
 }
-
-bool Function(EventWithUuid event) withUuid(String uuid) =>
-    (EventWithUuid event) => event.uuid == uuid;

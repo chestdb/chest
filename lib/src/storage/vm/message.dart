@@ -1,13 +1,28 @@
 import '../storage.dart';
 import 'transferable_block.dart';
 
-/// [Action]s are sent from the user's isolate to the chest backend isolate.
-abstract class Action {}
+/// [ActionMessage]s are sent from the user's isolate to the chest backend
+/// isolate.
+class ActionMessage {
+  ActionMessage({required this.uuid, required this.action});
 
-abstract class ActionWithUuid extends Action {
-  ActionWithUuid(this.uuid);
   final String uuid;
+  final Action action;
 }
+
+/// [EventMessage]s are sent from the chest backend isolate to the user's
+/// isolate in response to [ActionMessage]s. They are matched to the
+/// corresponding [ActionMessage] using the [uuid].
+
+class EventMessage {
+  EventMessage({required this.uuid, required this.event});
+
+  final String uuid;
+  final Event event;
+}
+
+/// The payload of an [ActionMessage].
+abstract class Action {}
 
 class GetValueAction extends Action {}
 
@@ -18,46 +33,43 @@ class SetValueAction extends Action {
   final Block value;
 }
 
-class FlushAction extends ActionWithUuid {
-  FlushAction(String uuid) : super(uuid);
-}
+class FlushAction extends Action {}
 
-class MigrateAction extends ActionWithUuid {
-  MigrateAction(String uuid, this.registry) : super(uuid);
+class MigrateAction extends Action {
+  MigrateAction({required this.registry});
 
   final Registry registry;
 }
 
-class CompactAction extends ActionWithUuid {
-  CompactAction(String uuid) : super(uuid);
-}
+class CompactAction extends Action {}
 
 class CloseAction extends Action {}
 
-/// [Event]s are sent from the chest backend isolate the the user's isolate.
+/// The payload of an [EventMessage].
 abstract class Event {}
 
-abstract class EventWithUuid extends Event {
-  EventWithUuid(this.uuid);
-  final String uuid;
+class ErrorEvent extends Event {
+  ErrorEvent(this.error);
+
+  final dynamic error;
 }
 
 class ValueEvent extends Event {
-  ValueEvent(this.value);
+  ValueEvent({required this.value});
 
   final TransferableUpdatableBlock? value;
 }
 
-class FlushedEvent extends EventWithUuid {
-  FlushedEvent(String uuid) : super(uuid);
-}
+class ValueSetEvent extends Event {}
 
-class MigratedEvent extends EventWithUuid {
-  MigratedEvent(String uuid, this.value) : super(uuid);
+class FlushedEvent extends Event {}
+
+class MigratedEvent extends Event {
+  MigratedEvent({required this.value});
 
   final TransferableUpdatableBlock value;
 }
 
-class CompactedEvent extends EventWithUuid {
-  CompactedEvent(String uuid) : super(uuid);
-}
+class CompactedEvent extends Event {}
+
+class ClosedEvent extends Event {}

@@ -15,37 +15,65 @@ class VmBackend {
 
   VmBackend({
     required String name,
-    required Stream<Action> incomingActions,
-    required this.sendEvent,
+    required Stream<ActionMessage> incomingMessages,
+    required this.sendMessage,
     required this.dispose,
   }) : _file = ChestFile('$name.chest') {
-    incomingActions.listen(_handleAction);
+    incomingMessages.listen(_handleMessage);
     _registerServiceMethods();
   }
 
   ChestFile _file;
-  final void Function(Event event) sendEvent;
+  final void Function(EventMessage event) sendMessage;
   final void Function() dispose;
 
-  Future<void> _handleAction(Action action) async {
-    if (action is GetValueAction) {
-      sendEvent(ValueEvent(_getValue()?.transferable()));
-    } else if (action is SetValueAction) {
-      _setValue(action.path, action.value);
-    } else if (action is FlushAction) {
-      _flush();
-      sendEvent(FlushedEvent(action.uuid));
-    } else if (action is CompactAction) {
-      _compact();
-      sendEvent(CompactedEvent(action.uuid));
-    } else if (action is MigrateAction) {
-      final migratedValue = _migrate(action.registry);
-      sendEvent(MigratedEvent(action.uuid, migratedValue));
-    } else if (action is CloseAction) {
-      _close();
-    } else {
-      throw panic('Backend: Unknown action $action.');
+  Future<void> _handleMessage(ActionMessage message) async {
+    print('Handling message $message');
+    Event event;
+    try {
+      event = await _handleAction(message.action);
+    } on ChestError catch (e) {
+      event = ErrorEvent(e);
+    } on ChestException catch (e) {
+      event = ErrorEvent(e);
+    } catch (e, st) {
+      // Not all errors are serializable, so we need to create a serializable
+      // one.
+      try {
+        panic('An error got thrown in the backend isolate: $e\n$st');
+      } catch (e) {
+        event = ErrorEvent(e);
+      }
     }
+    print('Sending answer $event');
+    sendMessage(EventMessage(uuid: message.uuid, event: event));
+  }
+
+  Future<Event> _handleAction(Action action) async {
+    if (action is GetValueAction) {
+      return ValueEvent(value: _getValue()?.transferable());
+    }
+    if (action is SetValueAction) {
+      _setValue(action.path, action.value);
+      return ValueSetEvent();
+    }
+    if (action is FlushAction) {
+      _flush();
+      return FlushedEvent();
+    }
+    if (action is CompactAction) {
+      _compact();
+      return CompactedEvent();
+    }
+    if (action is MigrateAction) {
+      final migratedValue = _migrate(action.registry);
+      return MigratedEvent(value: migratedValue);
+    }
+    if (action is CloseAction) {
+      _close();
+      return ClosedEvent();
+    }
+    panic('Backend: Unknown action $action.');
   }
 
   Iterable<ChestFileUpdate> _getUpdates() sync* {
