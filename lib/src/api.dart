@@ -4,23 +4,54 @@ import 'content.dart';
 import 'tapers.dart';
 
 /// Main API for the tape part.
-const tape = TapeApi._();
-
-class TapeApi {
-  const TapeApi._();
-
-  void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
+///
+/// Used for two things:
+///
+/// - Registering tapers:
+///   ```dart
+///   tape.register({
+///     ...
+///   });
+///   ```
+/// - Annotating classes for taper generation:
+///   ```dart
+///   @tape({
+///     v0: {#name, #age},
+///     v1: {#name},
+///   })
+///   class Fruit { ... }
+///   ```
+class tape {
+  static void register(Map<int, Taper<dynamic>> typeCodesToTapers) {
     registry.register({
       ...tapers.forChest,
       ...typeCodesToTapers,
     });
   }
 
-  bool get isInitialized => registry.hasTapers;
+  static bool get isInitialized => registry.hasTapers;
+
+  const tape(this.fieldsByVersion);
+
+  final Map<Version, Set<Symbol>> fieldsByVersion;
 }
 
+class Version {
+  const Version(this.value);
+
+  final int value;
+}
+
+const v0 = Version(0);
+const v1 = Version(1);
+const v2 = Version(2);
+const v3 = Version(3);
+const v4 = Version(4);
+
 class TapeKey {
-  const TapeKey(String key);
+  const TapeKey(this.key);
+
+  final Symbol key;
 }
 
 const doNotTape = Object();
