@@ -269,7 +269,9 @@ class UpdatableBlock {
     var value = block;
     while (!keys.isEmpty) {
       if (value is! MapBlock) _throwInvalid(path);
-      value = value[keys.removeAt(0)] ?? _throwInvalid(path);
+      final nextValue = value[keys.removeAt(0)];
+      if (nextValue == null) return null;
+      value = nextValue;
     }
     return value;
   }
