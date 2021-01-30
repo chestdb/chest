@@ -21,15 +21,17 @@ extension TapersForDartCore on TapersNamespace {
   }
 }
 
-extension TaperForNullExtension on TaperNamespace {
+/// [Null] is encoded to zero bytes, because a [null] value carries no
+/// information (it's the initial type in the type category).
+extension TaperForNull on TaperNamespace {
   // "Don't use the Null type, unless your are positive that you don't want void."
   // We are positive.
   // ignore: prefer_void_to_null
-  Taper<Null> forNull() => TaperForNull();
+  Taper<Null> forNull() => _TaperForNull();
 }
 
-class TaperForNull extends BytesTaper<Null> {
-  const TaperForNull();
+class _TaperForNull extends BytesTaper<Null> {
+  const _TaperForNull();
 
   @override
   List<int> toBytes(Null _) => [];
@@ -38,12 +40,14 @@ class TaperForNull extends BytesTaper<Null> {
   Null fromBytes(List<int> bytes) => null;
 }
 
-extension TaperForBoolExtension on TaperNamespace {
-  Taper<bool> forBool() => const TaperForBool();
+/// A [bool] is encoded using one byte that's either [1] for [true] or [0] for
+/// [false].
+extension TaperForBool on TaperNamespace {
+  Taper<bool> forBool() => const _TaperForBool();
 }
 
-class TaperForBool extends BytesTaper<bool> {
-  const TaperForBool();
+class _TaperForBool extends BytesTaper<bool> {
+  const _TaperForBool();
 
   @override
   List<int> toBytes(bool value) => [value ? 1 : 0];
@@ -56,12 +60,13 @@ extension ReferenceToBool on Reference<bool> {
   void toggle() => value = !value;
 }
 
-extension TaperForStringExtension on TaperNamespace {
-  Taper<String> forString() => const TaperForString();
+/// [String]s are utf8-encoded.
+extension TaperForString on TaperNamespace {
+  Taper<String> forString() => const _TaperForString();
 }
 
-class TaperForString extends BytesTaper<String> {
-  const TaperForString();
+class _TaperForString extends BytesTaper<String> {
+  const _TaperForString();
 
   @override
   List<int> toBytes(String string) => utf8.encode(string);
@@ -70,12 +75,13 @@ class TaperForString extends BytesTaper<String> {
   String fromBytes(List<int> bytes) => utf8.decode(bytes);
 }
 
-extension TaperForIntExtension on TaperNamespace {
-  Taper<int> forInt() => const TaperForInt();
+/// [int]s are 64-bit integers in the DartVM.
+extension TaperForInt on TaperNamespace {
+  Taper<int> forInt() => const _TaperForInt();
 }
 
-class TaperForInt extends BytesTaper<int> {
-  const TaperForInt();
+class _TaperForInt extends BytesTaper<int> {
+  const _TaperForInt();
 
   @override
   List<int> toBytes(int value) {
@@ -94,12 +100,13 @@ class TaperForInt extends BytesTaper<int> {
   }
 }
 
-extension TaperForDoubleExtension on TaperNamespace {
-  Taper<double> forDouble() => const TaperForDouble();
+/// [double]s are 64-bit floating point number in the DartVM.
+extension TaperForDouble on TaperNamespace {
+  Taper<double> forDouble() => const _TaperForDouble();
 }
 
-class TaperForDouble extends BytesTaper<double> {
-  const TaperForDouble();
+class _TaperForDouble extends BytesTaper<double> {
+  const _TaperForDouble();
 
   @override
   List<int> toBytes(double value) {
@@ -117,7 +124,7 @@ class TaperForDouble extends BytesTaper<double> {
   }
 }
 
-extension TaperForBigInt on TaperNamespace {
+extension _TaperForBigInt on TaperNamespace {
   /*Taper<BigInt> forBigInt() {
     return BytesTaper(
       toBytes: (bigInt) {
@@ -166,12 +173,13 @@ extension TaperForBigInt on TaperNamespace {
   }*/
 }
 
-extension TaperForDateTimeExtension on TaperNamespace {
-  Taper<DateTime> forDateTime() => const TaperForDateTime();
+/// [DateTime]s are simply encoded as maps.
+extension TaperForDateTime on TaperNamespace {
+  Taper<DateTime> forDateTime() => const _TaperForDateTime();
 }
 
-class TaperForDateTime extends MapTaper<DateTime> {
-  const TaperForDateTime();
+class _TaperForDateTime extends MapTaper<DateTime> {
+  const _TaperForDateTime();
 
   @override
   Map<Object?, Object?> toMap(DateTime dateTime) {
@@ -195,12 +203,13 @@ extension ReferenceToDateTime on Reference<DateTime> {
   Reference<bool> get isUtc => child('isUtc');
 }
 
-extension TaperForDurationExtension on TaperNamespace {
-  Taper<Duration> forDuration() => const TaperForDuration();
+/// [Duration]s are simply encoded using maps.
+extension TaperForDuration on TaperNamespace {
+  Taper<Duration> forDuration() => const _TaperForDuration();
 }
 
-class TaperForDuration extends MapTaper<Duration> {
-  const TaperForDuration();
+class _TaperForDuration extends MapTaper<Duration> {
+  const _TaperForDuration();
 
   @override
   Map<Object?, Object?> toMap(Duration duration) =>
@@ -215,11 +224,14 @@ extension ReferenceToDuration on Reference<Duration> {
   Reference<int> get microseconds => child('microseconds');
 }
 
-extension TaperForListExtension on TaperNamespace {
-  Taper<List<T>> forList<T>() => TaperForList<T>();
+/// [List]s are encoded as a map from indizes to values. That makes random
+/// access to items possible. Inserting items in the middle of the list is quite
+/// expensive, but that's okay because it's typically not done that often.
+extension TaperForList on TaperNamespace {
+  Taper<List<T>> forList<T>() => _TaperForList<T>();
 }
 
-class TaperForList<T> extends MapTaper<List<T>> {
+class _TaperForList<T> extends MapTaper<List<T>> {
   @override
   Map<Object?, Object?> toMap(List<T> list) =>
       {for (var i = 0; i < list.length; i++) i: list[i]};
@@ -231,13 +243,17 @@ class TaperForList<T> extends MapTaper<List<T>> {
 
 extension ReferenceToList<T> on Reference<List<T>> {
   Reference<T> operator [](int index) => child(index);
+  int get length =>
+      value.length; // TODO(marcelgarus): Make this more efficient.
+  void add(T item) => child(length, createImplicitly: true).value = item;
 }
 
-extension TaperForMapExtension on TaperNamespace {
-  Taper<Map<K, V>> forMap<K, V>() => TaperForMap<K, V>();
+/// [Map]s are obviously encoded as maps. No surprise there.
+extension TaperForMap on TaperNamespace {
+  Taper<Map<K, V>> forMap<K, V>() => _TaperForMap<K, V>();
 }
 
-class TaperForMap<K, V> extends MapTaper<Map<K, V>> {
+class _TaperForMap<K, V> extends MapTaper<Map<K, V>> {
   @override
   Map<Object?, Object?> toMap(Map<K, V> map) => map;
 
@@ -246,21 +262,47 @@ class TaperForMap<K, V> extends MapTaper<Map<K, V>> {
 }
 
 extension ReferenceToMap<K, V> on Reference<Map<K, V>> {
-  Reference<V> operator [](K key) => child(key, createImplicitly: true);
+  bool containsKey(K key) => child<V>(key).exists;
+
+  Reference<V> operator [](K key) => child<V>(key, createImplicitly: true);
 }
 
+/// [Set]s are encoded as maps from elements to [bool], where [true] indicates
+/// that the element is part of the map and [false] indicates it's not.
+/// That allows adding and removing elements in constant time. During
+/// compaction, because of possible taper migration, the whole chest content is
+/// reserialized, so the elements that point to [false] are no longer in the
+/// compacted chest.
 extension TaperForSetExtension on TaperNamespace {
   Taper<Set<T>> forSet<T>() => TaperForSet<T>();
 }
 
 class TaperForSet<T> extends MapTaper<Set<T>> {
   @override
-  Map<Object?, Object?> toMap(Set<T> set) => {for (final key in set) key: null};
+  Map<Object?, Object?> toMap(Set<T> set) => {for (final key in set) key: true};
 
   @override
   Set<T> fromMap(Map<Object?, Object?> map) => map.values.cast<T>().toSet();
 }
 
 extension ReferenceToSet<T> on Reference<Set<T>> {
-  bool contains(T value) => child(value, createImplicitly: false).exists;
+  bool contains(T element) => child<bool>(element).value;
+
+  void add(T element) {
+    child<bool>(element, createImplicitly: true).value = true;
+  }
+
+  void remove(T element) {
+    child<bool>(element, createImplicitly: false).value = false;
+  }
+
+  void toggle(T element) {
+    if (child<bool>(element).value) {
+      remove(element);
+    } else {
+      add(element);
+    }
+  }
+
+  Reference<void> operator [](T element) => child(element);
 }
