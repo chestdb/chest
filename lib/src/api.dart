@@ -1,5 +1,3 @@
-// Dummy annotation classes.
-
 import 'content.dart';
 import 'tapers.dart';
 
@@ -41,6 +39,9 @@ class Version {
   const Version(this.value);
 
   final int value;
+
+  @override
+  String toString() => 'v$value';
 }
 
 const v0 = Version(0);

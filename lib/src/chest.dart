@@ -2,16 +2,15 @@ import 'dart:async';
 
 import 'backend.dart';
 import 'blocks.dart';
-import 'bytes.dart';
 import 'storage/storage.dart';
-import 'storage/debug/storage.dart';
 
 /// A container for a value that's persisted beyond the app's lifetime.
 ///
 /// This is how [Chest]s are typically used:
 ///
 /// ```dart
-/// var counter = await Chest.open('counter', ifNew: () => 0);
+/// final counter = Chest('counter', ifNew: () => 0);
+/// await counter.open();
 /// print('This program ran ${counter.value} times.');
 /// counter.value++;
 /// await counter.close();
@@ -41,6 +40,7 @@ class Chest<T> implements Reference<T> {
   bool get isOpened => _backend != null;
 
   Future<void> open() async {
+    assert(tape.isInitialized);
     if (_mockedBackends.containsKey(name)) {
       _backend = _mockedBackends[name]!.cast<T>(name);
     } else if (_openedBackends.containsKey(name)) {
@@ -105,16 +105,22 @@ class Chest<T> implements Reference<T> {
 final _mockedBackends = <String, Backend<dynamic>>{};
 final _openedBackends = <String, Backend<dynamic>>{};
 
-/// A reference to an interior part of a [Chest].
 abstract class Reference<T> {
   Reference<R> child<R>(Object? key, {bool createImplicitly = false});
 
+  /// Whether the [value] that this reference points to exists.
   bool get exists;
-  set value(T value);
+
+  /// The [value] this reference points to.
   T get value;
+  set value(T value);
+
+  /// A [Stream] that fires evertime the [value] that this reference points to
+  /// changes.
   Stream<void> watch();
 }
 
+/// A reference to an interior part of a [Chest].
 class InteriorReference<T> implements Reference<T> {
   InteriorReference(this.chest, this.path, this.createImplicitly);
 
