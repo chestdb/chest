@@ -118,16 +118,13 @@ class Backend<T> {
     return _value.getAt(actualPath)?.toObject() as R;
   }
 
-  Stream<R?> watchAt<R>(Path<Object?> path) {
+  Stream<void> watchAt(Path<Object?> path) {
     final blockPath = pathToValue.followedBy(path).serialize();
-    return _onValueChanged
-        .where((changedPath) {
-          // Only deserialize on those events that could have changed the value.
-          return changedPath.startsWith(blockPath) ||
-              blockPath.startsWith(changedPath);
-        })
-        .map((_) => getAt<R>(blockPath))
-        .distinct();
+    return _onValueChanged.where((changedPath) {
+      // Only fire on those events that could have changed the value.
+      return changedPath.startsWith(blockPath) ||
+          blockPath.startsWith(changedPath);
+    });
   }
 
   Backend<R> cast<R>(String name) {

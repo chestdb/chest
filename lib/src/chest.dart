@@ -95,8 +95,8 @@ class Chest<T> implements Reference<T> {
   }
 
   @override
-  Stream<T?> watch() => _watchAt<T>(Path.root());
-  Stream<R?> _watchAt<R>(Path<Object?> path) {
+  Stream<void> watch() => _watchAt(Path.root());
+  Stream<void> _watchAt(Path<Object?> path) {
     assert(isOpened);
     return _backend!.watchAt(path);
   }
@@ -112,7 +112,7 @@ abstract class Reference<T> {
   bool get exists;
   set value(T value);
   T get value;
-  Stream<T?> watch();
+  Stream<void> watch();
 }
 
 class InteriorReference<T> implements Reference<T> {
@@ -133,5 +133,5 @@ class InteriorReference<T> implements Reference<T> {
   bool get exists => chest._existsAt(path);
   set value(T value) => chest._setAt(path, value, createImplicitly);
   T get value => chest._getAt<T>(path);
-  Stream<T?> watch() => chest._watchAt(path);
+  Stream<void> watch() => chest._watchAt(path);
 }
