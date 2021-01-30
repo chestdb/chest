@@ -55,7 +55,7 @@ extension _EncodingLength on Block {
               return 2 * _pointerLength +
                   entry.key.encodingLength +
                   entry.value.encodingLength;
-            }).reduce((a, b) => a + b);
+            }).fold<int>(0, (a, b) => a + b);
           } else if (block is BytesBlock) {
             return block.bytes.length;
           } else {
