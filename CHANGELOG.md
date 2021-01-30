@@ -1,3 +1,7 @@
+## 0.0.5-0
+
+* Make root path configurable.
+
 ## 0.0.4-0
 
 * Separate creating `Chest`s and opening them.
