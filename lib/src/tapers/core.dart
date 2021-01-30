@@ -286,18 +286,21 @@ class TaperForSet<T> extends MapTaper<Set<T>> {
 }
 
 extension ReferenceToSet<T> on Reference<Set<T>> {
-  bool contains(T element) => child<bool>(element).value;
+  bool contains(T element) =>
+      child<bool>(element).exists && child<bool>(element).value;
 
   void add(T element) {
     child<bool>(element, createImplicitly: true).value = true;
   }
 
   void remove(T element) {
-    child<bool>(element, createImplicitly: false).value = false;
+    if (contains(element)) {
+      child<bool>(element).value = false;
+    }
   }
 
   void toggle(T element) {
-    if (child<bool>(element).value) {
+    if (contains(element)) {
       remove(element);
     } else {
       add(element);

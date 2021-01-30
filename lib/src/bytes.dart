@@ -79,7 +79,7 @@ extension BlockToBytes on Block {
     /// Quick reminder: The block layout looks like this:
     ///
     /// Map:    type code | 0 | length | key | value | key | value | ...
-    /// Bytes:  type code | 1 | bytes
+    /// Bytes:  type code | 1 | length | bytes
     int serialize(Block block) {
       final start = data.cursor;
       data.addTypeCode(block.typeCode);

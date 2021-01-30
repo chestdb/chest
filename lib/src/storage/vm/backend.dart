@@ -28,14 +28,12 @@ class VmBackend {
   final void Function() dispose;
 
   Future<void> _handleMessage(ActionMessage message) async {
-    print('Handling message $message');
     Event event;
     try {
       event = await _handleAction(message.action);
     } catch (e, st) {
       event = ErrorEvent('$e', '$st');
     }
-    print('Sending answer $event');
     sendMessage(EventMessage(uuid: message.uuid, event: event));
   }
 
