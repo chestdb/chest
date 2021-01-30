@@ -18,7 +18,7 @@ class VmBackend {
     required Stream<ActionMessage> incomingMessages,
     required this.sendMessage,
     required this.dispose,
-  }) : _file = ChestFile('$name.chest') {
+  }) : _file = ChestFile('${tape.rootPath}/$name.chest') {
     incomingMessages.listen(_handleMessage);
     _registerServiceMethods();
   }
@@ -32,18 +32,8 @@ class VmBackend {
     Event event;
     try {
       event = await _handleAction(message.action);
-    } on ChestError catch (e) {
-      event = ErrorEvent(e);
-    } on ChestException catch (e) {
-      event = ErrorEvent(e);
     } catch (e, st) {
-      // Not all errors are serializable, so we need to create a serializable
-      // one.
-      try {
-        panic('An error got thrown in the backend isolate: $e\n$st');
-      } catch (e) {
-        event = ErrorEvent(e);
-      }
+      event = ErrorEvent('$e', '$st');
     }
     print('Sending answer $event');
     sendMessage(EventMessage(uuid: message.uuid, event: event));

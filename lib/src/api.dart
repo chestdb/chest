@@ -29,6 +29,7 @@ class tape {
     });
   }
 
+  static String rootPath = '.';
   static bool get isInitialized => registry.hasTapers;
 
   const tape(this.fieldsByVersion);

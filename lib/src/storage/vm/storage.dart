@@ -40,11 +40,15 @@ class VmStorage implements Storage {
     // TODO: Try to find existing isolate.
     await Isolate.spawn(
       _runBackend,
-      SetupInfo(name, receivePort.sendPort),
+      _SetupInfo(
+        rootPath: tape.rootPath,
+        name: name,
+        sendPort: receivePort.sendPort,
+      ),
       debugName: 'chest.$name',
     );
     final incoming = receivePort.asBroadcastStream();
-    final answer = await incoming.first as SetupAnswer;
+    final answer = await incoming.first as _SetupAnswer;
     return VmStorage._(
       name,
       incomingMessages: incoming.cast<EventMessage>(),
@@ -77,7 +81,7 @@ class VmStorage implements Storage {
         await incomingMessages.firstWhere((message) => message.uuid == uuid);
     final event = answer.event;
     if (event is ErrorEvent) {
-      throw event.error;
+      throw event;
     }
     if (event is! E) {
       panic("Cast of received event failed. Expected $E, but was "
@@ -117,23 +121,26 @@ class VmStorage implements Storage {
   }
 }
 
-class SetupInfo {
-  SetupInfo(this.name, this.sendPort);
+class _SetupInfo {
+  _SetupInfo(
+      {required this.rootPath, required this.name, required this.sendPort});
 
+  final String rootPath;
   final String name;
   final SendPort sendPort;
 }
 
-class SetupAnswer {
-  SetupAnswer(this.sendPort);
+class _SetupAnswer {
+  _SetupAnswer({required this.sendPort});
 
   final SendPort sendPort;
 }
 
 /// This is the entrypoint for the backend isolate.
-Future<void> _runBackend(SetupInfo info) async {
+Future<void> _runBackend(_SetupInfo info) async {
   final receivePort = ReceivePort();
-  info.sendPort.send(SetupAnswer(receivePort.sendPort));
+  tape.rootPath = info.rootPath;
+  info.sendPort.send(_SetupAnswer(sendPort: receivePort.sendPort));
 
   // In its constructor, the [VmBackend] automatically listens for incoming
   // actions.

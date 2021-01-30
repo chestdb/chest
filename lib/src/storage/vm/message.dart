@@ -49,9 +49,13 @@ class CloseAction extends Action {}
 abstract class Event {}
 
 class ErrorEvent extends Event {
-  ErrorEvent(this.error);
+  ErrorEvent(this.error, this.stackTrace);
 
-  final dynamic error;
+  final String error;
+  final String stackTrace;
+
+  @override
+  String toString() => '$error\n$stackTrace';
 }
 
 class ValueEvent extends Event {

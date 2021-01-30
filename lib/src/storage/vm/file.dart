@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'dart:typed_data';
 
 import '../storage.dart';
@@ -28,7 +27,7 @@ import '../storage.dart';
 /// |         | length | key | key | ... | length | bytes  |
 /// | 1 byte  | many bytes               | many bytes      |
 class ChestFile {
-  ChestFile(String name) : this._file = SyncFile(name);
+  ChestFile(String path) : this._file = SyncFile(path);
 
   final SyncFile _file;
 
@@ -135,8 +134,8 @@ class ChestFileUpdate {
 /// A file representation that only offers synchronous operations. This makes
 /// sure that you don't call an asynchronous one by accident.
 class SyncFile {
-  SyncFile(String name) {
-    _open(name);
+  SyncFile(String path) {
+    _open(path);
     _intData = ByteData(8);
     _intList = Uint8List.view(_intData.buffer);
   }
@@ -150,9 +149,10 @@ class SyncFile {
   late Uint8List _intList;
 
   void _open(String path) {
+    // TODO: Lock file?
     // TODO: Throw if file is already opened and locked.
-    _file = File(path).openSync(mode: FileMode.append)
-      ..lockSync(FileLock.blockingExclusive);
+    _file = File(path).openSync(mode: FileMode.append);
+    // ..lockSync(FileLock.blockingExclusive);
   }
 
   void delete() {
@@ -163,8 +163,8 @@ class SyncFile {
 
   void close() {
     _file
-      ?..unlockSync()
-      ..closeSync();
+      // ?..unlockSync()
+      ?..closeSync();
     _file = null;
   }
 
