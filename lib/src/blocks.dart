@@ -38,6 +38,7 @@ abstract class MapBlock extends Block {
   Block? operator [](Block key);
   operator []=(Block key, Block value);
   List<MapEntry<Block, Block>> get entries;
+  Set<Block> get keys;
 
   /// Returns a copy of this [MapBlock] with the given changes. Changes with a
   /// [null] as value are deletions.
@@ -117,6 +118,7 @@ class _DefaultMapBlock extends MapBlock {
   Block? operator [](Block key) => map[key];
   operator []=(Block key, Block value) => map[key] = value;
   List<MapEntry<Block, Block>> get entries => map.entries.toList();
+  Set<Block> get keys => map.keys.toSet();
 }
 
 /// A block that contains some bytes.
@@ -188,6 +190,8 @@ class Path<T> {
   bool get isRoot => keys.isEmpty;
   int get length => keys.length;
 
+  Path<T>? get parent =>
+      isRoot ? null : Path(keys.take(keys.length - 1).toList());
   T get firstKey => keys.first;
   Path<T> withoutFirst() => Path(keys.skip(1).toList());
   bool startsWith(Path<T> other) {
@@ -257,6 +261,10 @@ class UpdatableBlock {
   Block block;
   final Map<Block, UpdatableBlock?> updates;
   bool get _hasUpdates => updates.isNotEmpty;
+  Set<Block> get keys => {
+        ...updates.entries.where((it) => it.value != null).map((it) => it.key),
+        if (block is MapBlock) ...(block as MapBlock).keys,
+      };
 
   Block? getAt(Path<Block> path) {
     if (path.isRoot) return getAtRoot();
@@ -269,7 +277,7 @@ class UpdatableBlock {
     final keys = List.of(path.keys);
     var value = block;
     while (!keys.isEmpty) {
-      if (value is! MapBlock) _throwInvalid(path);
+      if (value is! MapBlock) _throwInvalid(path, {});
       final nextValue = value[keys.removeAt(0)];
       if (nextValue == null) return null;
       value = nextValue;
@@ -310,7 +318,7 @@ class UpdatableBlock {
     }
 
     final block = this.block;
-    if (block is! MapBlock) _throwInvalid(path);
+    if (block is! MapBlock) _throwInvalid(path, {});
     final key = path.firstKey;
 
     if (path.length > 1) {
@@ -318,9 +326,9 @@ class UpdatableBlock {
       /// [createImplicitly] is set, that doesn't create the whole path to the
       /// child, only the last entry.
       final child = updates.putIfAbsent(key, () {
-            return UpdatableBlock(block[key] ?? _throwInvalid(path));
+            return UpdatableBlock(block[key] ?? _throwInvalid(path, keys));
           }) ??
-          _throwInvalid(path);
+          _throwInvalid(path, keys);
       child.update(
         path.withoutFirst(),
         updatedBlock,
@@ -339,12 +347,19 @@ class UpdatableBlock {
 
     final previousValue = updates.containsKey(key) ? updates[key] : block[key];
     if (!createImplicitly && previousValue == null) {
-      _throwInvalid(path);
+      _throwInvalid(
+        path,
+        {...updates.entries, ...block.entries}
+            .where((it) => it.value != null)
+            .map((it) => it.key)
+            .toSet(),
+      );
     }
     updates[key] = UpdatableBlock(updatedBlock);
   }
 
-  Never _throwInvalid(Path<Block> path) => throw InvalidPathException(path);
+  Never _throwInvalid(Path<Block> path, Set<Block> keys) =>
+      throw InvalidPathException(path, keys);
 
   @override
   String toString() => 'UpdatableBlock(base: $block, updates: $updates)';
@@ -352,18 +367,20 @@ class UpdatableBlock {
 
 /// Indicates that you attempted to perform an operation with an invalid path.
 class InvalidPathException implements ChestException {
-  InvalidPathException(this.path);
+  InvalidPathException(this.path, this.keys);
 
-  final Path<Object> path;
+  final Path<Object?> path;
+  final Set<Object> keys;
 
   String toString() {
+    Path<Object?> path = this.path;
     try {
-      final deserialized =
-          Path(path.keys.cast<Block>().map((key) => key.toObject()).toList());
-      return 'The path $deserialized is invalid.';
-    } catch (e) {
-      return 'The path $path is invalid.';
-    }
+      path = Path(
+        path.keys.cast<Block>().map((key) => key.toObject()).toList(),
+      );
+    } catch (_) {}
+    return 'The path $path is invalid. '
+        'These are the possible keys after ${path.parent}: $keys';
   }
 }
 

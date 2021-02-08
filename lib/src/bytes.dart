@@ -217,6 +217,8 @@ class MapBlockView extends MapBlock implements BlockView {
     ];
   }
 
+  Set<BlockView> get keys => {for (var i = 0; i < length; i++) _getKeyAt(i)};
+
   int? _getIndexOfKey(Block key) {
     var left = 0;
     var right = length;
@@ -383,12 +385,13 @@ class _Data {
 }
 
 class CorruptedChestException implements Exception {
-  CorruptedChestException(this.message);
+  CorruptedChestException(this.chestName, this.message);
 
+  final String chestName;
   final String message;
 
   String toString() {
-    return "Your chest seems to be corrupted.\n$message\n"
+    return "The chest '$chestName' seems to be corrupted.\n$message\n"
             "If you're absolutely sure that can't be the case, please open an "
             "issue at " +
         newIssueUrl(

@@ -46,12 +46,14 @@ class Backend<T> {
     // Migrate tapers if necessary.
     final typeCodesBlock = updatableContent.getAt(pathToTypeCodes.serialize());
     if (typeCodesBlock == null) {
-      throw CorruptedChestException('Chest content has no type codes.');
+      throw CorruptedChestException(name, 'Chest content has no type codes.');
     }
     final typeCodes = typeCodesBlock.toObject();
     if (typeCodes is! TypeCodes) {
       throw CorruptedChestException(
-          "Chest content's type codes are not of type TypeCodes.");
+        name,
+        "Chest content's type codes are not of type TypeCodes.",
+      );
     }
     // Migrate if the registered tapers changed since the last time the chest
     // was opened.
@@ -62,7 +64,7 @@ class Backend<T> {
     // Ensure that the content is of the right type.
     final value = updatableContent.getAt(pathToValue.serialize());
     if (value == null) {
-      throw CorruptedChestException('Chest content has no value.');
+      throw CorruptedChestException(name, 'Chest content has no value.');
     }
     final taper = registry.typeCodeToTaper(value.typeCode);
     if (taper == null) {
