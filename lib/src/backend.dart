@@ -52,7 +52,8 @@ class Backend<T> {
     if (typeCodes is! TypeCodes) {
       throw CorruptedChestException(
         name,
-        "Chest content's type codes are not of type TypeCodes.",
+        "Chest content's type codes are not of type TypeCodes. "
+        "Instead, they are ${typeCodes.runtimeType}: $typeCodes",
       );
     }
     // Migrate if the registered tapers changed since the last time the chest

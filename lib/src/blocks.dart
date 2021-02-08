@@ -367,10 +367,10 @@ class UpdatableBlock {
 
 /// Indicates that you attempted to perform an operation with an invalid path.
 class InvalidPathException implements ChestException {
-  InvalidPathException(this.path, this.keys);
+  InvalidPathException(this.path, [this.keys]);
 
   final Path<Object?> path;
-  final Set<Object> keys;
+  final Set<Object>? keys;
 
   String toString() {
     Path<Object?> path = this.path;
@@ -379,8 +379,11 @@ class InvalidPathException implements ChestException {
         path.keys.cast<Block>().map((key) => key.toObject()).toList(),
       );
     } catch (_) {}
-    return 'The path $path is invalid. '
-        'These are the possible keys after ${path.parent}: $keys';
+    final buffer = StringBuffer('The path $path is invalid.');
+    if (keys != null) {
+      buffer.write(' These are the possible keys after ${path.parent}: $keys');
+    }
+    return buffer.toString();
   }
 }
 

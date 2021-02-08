@@ -90,7 +90,7 @@ class Chest<T> extends Reference<T> {
   T get value => _getAt<T>(Path.root());
   R _getAt<R>(Path<Object?> path) {
     assert(isOpened);
-    return _backend!.getAt(path);
+    return _backend!.getAt(path) ?? (throw InvalidPathException(path));
   }
 
   Future<void> remove() async {
