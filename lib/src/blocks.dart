@@ -1,5 +1,6 @@
 import 'package:more/more.dart';
 
+import 'bytes.dart';
 import 'utils.dart';
 
 /// An intermediary format that doesn't contain arbitrary [Object]s anymore, but
@@ -355,7 +356,15 @@ class InvalidPathException implements ChestException {
 
   final Path<Object> path;
 
-  String toString() => 'The path $path is invalid.';
+  String toString() {
+    try {
+      final deserialized =
+          Path(path.keys.cast<Block>().map((key) => key.toObject()).toList());
+      return 'The path $deserialized is invalid.';
+    } catch (e) {
+      return 'The path $path is invalid.';
+    }
+  }
 }
 
 class TriedToDeleteRootValueError extends ChestError {
