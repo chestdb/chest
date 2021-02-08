@@ -103,6 +103,12 @@ class Chest<T> extends Reference<T> {
     return _backend!.removeAt(path);
   }
 
+  int get numberOfChildren => _numberOfChildrenAt(Path.root());
+  int _numberOfChildrenAt(Path<Object?> path) {
+    assert(isOpened);
+    return _backend!.numberOfChildrenAt(path);
+  }
+
   @override
   Stream<void> watch() => _watchAt(Path.root());
   Stream<void> _watchAt(Path<Object?> path) {
@@ -126,6 +132,7 @@ abstract class Reference<T> {
   T? get valueOrNull => exists ? value : null;
   set value(T value);
   void remove();
+  int get numberOfChildren;
 
   /// A [Stream] that fires evertime the [value] that this reference points to
   /// changes.
@@ -166,4 +173,5 @@ class InteriorReference<T> extends Reference<T> {
   T get value => chest._getAt<T>(path);
   Stream<void> watch() => chest._watchAt(path);
   void remove() => chest._removeAt(path);
+  int get numberOfChildren => chest._numberOfChildrenAt(path);
 }

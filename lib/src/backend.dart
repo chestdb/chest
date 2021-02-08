@@ -127,6 +127,12 @@ class Backend<T> {
     _storage.setValue(actualPath, null);
   }
 
+  int numberOfChildrenAt(Path<Object?> path) {
+    final actualPath = pathToValue.followedBy(path).serialize();
+    final block = _value.getAt(actualPath)!;
+    return block is MapBlock ? block.keys.length : 0;
+  }
+
   Stream<void> watchAt(Path<Object?> path) {
     final blockPath = pathToValue.followedBy(path).serialize();
     return _onValueChanged.where((changedPath) {
