@@ -242,10 +242,21 @@ class _TaperForList<T> extends MapTaper<List<T>> {
 }
 
 extension ReferenceToList<T> on Reference<List<T>> {
+  int get length => numberOfChildren;
+  bool get isEmpty => length == 0;
+  bool get isNotEmpty => !isEmpty;
+
   Reference<T> operator [](int index) => child(index);
-  int get length =>
-      value.length; // TODO(marcelgarus): Make this more efficient.
-  void add(T item) => child(length, createImplicitly: true).value = item;
+
+  void add(T item) => child<T>(length, createImplicitly: true).value = item;
+  void removeLast() => child<T>(length - 1).remove();
+
+  Iterable<Reference<T>> get references sync* {
+    final length = this.length;
+    for (var i = 0; i < length; i++) {
+      yield this[i];
+    }
+  }
 }
 
 /// [Map]s are obviously encoded as maps. No surprise there.
@@ -262,17 +273,30 @@ class _TaperForMap<K, V> extends MapTaper<Map<K, V>> {
 }
 
 extension ReferenceToMap<K, V> on Reference<Map<K, V>> {
-  bool containsKey(K key) => child<V>(key).exists;
+  int get length => numberOfChildren;
+  bool get isEmpty => length == 0;
+  bool get isNotEmpty => !isEmpty;
 
+  bool containsKey(K key) => child<V>(key).exists;
   Reference<V> operator [](K key) => child<V>(key, createImplicitly: true);
+
+  void put(K key, V value) => this[key].value = value;
+
+  V? remove(K key) {
+    final value = containsKey(key) ? this[key].value : null;
+    this[key].remove();
+    return value;
+  }
+
+  V putIfAbsent(K key, V Function() ifAbsent) {
+    if (containsKey(key)) return this[key].value;
+    final value = ifAbsent();
+    this[key].value = value;
+    return value;
+  }
 }
 
-/// [Set]s are encoded as maps from elements to [bool], where [true] indicates
-/// that the element is part of the map and [false] indicates it's not.
-/// That allows adding and removing elements in constant time. During
-/// compaction, because of possible taper migration, the whole chest content is
-/// reserialized, so the elements that point to [false] are no longer in the
-/// compacted chest.
+/// [Set]s are encoded as maps from elements to [Null].
 extension TaperForSetExtension on TaperNamespace {
   Taper<Set<T>> forSet<T>() => TaperForSet<T>();
 }
@@ -282,22 +306,24 @@ class TaperForSet<T> extends MapTaper<Set<T>> {
   Map<Object?, Object?> toMap(Set<T> set) => {for (final key in set) key: true};
 
   @override
-  Set<T> fromMap(Map<Object?, Object?> map) => map.values.cast<T>().toSet();
+  Set<T> fromMap(Map<Object?, Object?> map) => map.entries
+      .where((entry) => entry.value as bool)
+      .map((entry) => entry.key as T)
+      .toSet();
 }
 
 extension ReferenceToSet<T> on Reference<Set<T>> {
-  bool contains(T element) =>
-      child<bool>(element).exists && child<bool>(element).value;
+  int get length => numberOfChildren;
+  bool get isEmpty => length == 0;
+  bool get isNotEmpty => !isEmpty;
 
-  void add(T element) {
-    child<bool>(element, createImplicitly: true).value = true;
-  }
+  bool contains(T element) => child<Null>(element).exists;
+  Reference<void> operator [](T element) => child(element);
 
-  void remove(T element) {
-    if (contains(element)) {
-      child<bool>(element).value = false;
-    }
-  }
+  void add(T element) =>
+      child<Null>(element, createImplicitly: true).value = null;
+
+  void remove(T element) => this[element].remove();
 
   void toggle(T element) {
     if (contains(element)) {
@@ -306,6 +332,4 @@ extension ReferenceToSet<T> on Reference<Set<T>> {
       add(element);
     }
   }
-
-  Reference<void> operator [](T element) => child(element);
 }
