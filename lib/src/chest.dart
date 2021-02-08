@@ -68,6 +68,10 @@ class Chest<T> implements Reference<T> {
     _openedBackends.remove(name);
   }
 
+  Future<void> delete() async {
+    await Backend.delete(name);
+  }
+
   @override
   Reference<R> child<R>(Object? key, {bool createImplicitly = false}) {
     return InteriorReference<R>(this, Path([key]), createImplicitly);

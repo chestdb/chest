@@ -5,7 +5,12 @@ export '../bytes.dart';
 export '../tapers.dart';
 export '../utils.dart';
 
+import 'web/storage.dart' if (dart.library.io) 'vm/storage.dart';
+
 abstract class Storage {
+  static Future<Storage> open(String name) => openStorage(name);
+  static Future<void> delete(String name) => deleteChest(name);
+
   /// A stream of updates.
   Stream<Update> get updates;
 

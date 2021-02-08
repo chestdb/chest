@@ -1,6 +1,8 @@
 import '../storage.dart';
 
 Future<Storage> openStorage(String name) => WebStorage.open(name);
+Future<Storage> deleteChest(String name) =>
+    panic("Running on web. That's bad.");
 
 class WebStorage implements Storage {
   static Future<WebStorage> open(String name) => panic('WebStorage used.');

@@ -5,8 +5,6 @@ import 'package:chest/src/storage/debug/storage.dart';
 import 'blocks.dart';
 import 'content.dart';
 import 'storage/storage.dart';
-import 'storage/web/storage.dart'
-    if (dart.library.io) 'storage/vm/storage.dart';
 import 'tapers.dart';
 
 /// The [Backend] for chests that already supports saving and updating a value,
@@ -32,7 +30,7 @@ class Backend<T> {
     FutureOr<T> Function() ifNew,
   ) async {
     // Get the existing [Content] from the chest.
-    final storage = await openStorage(name);
+    final storage = await Storage.open(name);
     var updatableContent = await storage.getValue();
 
     // Set default content if none exists.
@@ -80,6 +78,8 @@ class Backend<T> {
 
     return Backend<T>(updatableContent, storage);
   }
+
+  static Future<void> delete(String name) => Storage.delete(name);
 
   static Backend<T> mock<T>(String name, T value) {
     final content = Content(

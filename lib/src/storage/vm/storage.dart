@@ -5,9 +5,11 @@ import 'dart:math';
 import '../../utils.dart';
 import '../storage.dart';
 import 'backend.dart';
+import 'file.dart';
 import 'message.dart';
 
 Future<Storage> openStorage(String name) => VmStorage.open(name);
+Future<void> deleteChest(String name) => VmStorage.delete(name);
 
 /// An implementation of [Chest] for the Dart VM.
 ///
@@ -55,6 +57,10 @@ class VmStorage implements Storage {
       sendMessage: answer.sendPort.send,
       dispose: () => receivePort.close(),
     );
+  }
+
+  static Future<void> delete(String name) async {
+    SyncFile('${tape.rootPath}/$name.chest').delete();
   }
 
   VmStorage._(
