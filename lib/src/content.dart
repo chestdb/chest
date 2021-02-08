@@ -60,6 +60,9 @@ class Uint8 {
   final int value;
 
   bool operator ==(Object other) => other is Uint8 && value == other.value;
+
+  @override
+  String toString() => '$value';
 }
 
 extension TaperForContentExtension on TaperNamespace {
