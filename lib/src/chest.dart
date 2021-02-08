@@ -62,8 +62,7 @@ class Chest<T> extends Reference<T> {
   }
 
   Future<void> close() async {
-    assert(isOpened);
-    await _backend!.close();
+    await _backend?.close();
     _backend = null;
     _openedBackends.remove(name);
   }
