@@ -83,7 +83,8 @@ class VmBackend {
     for (final update in _getUpdates()) {
       if (value == null) {
         if (!update.path.isRoot) panic('First update was not for root.');
-        value = UpdatableBlock(update.value);
+        if (update.value == null) panic('Root update has value null.');
+        value = UpdatableBlock(update.value!);
       } else {
         value.update(update.path, update.value, createImplicitly: true);
       }
@@ -91,9 +92,9 @@ class VmBackend {
     return value;
   }
 
-  void _setValue(Path<Block> path, Block value) {
+  void _setValue(Path<Block> path, Block? value) {
     if (path.isRoot) {
-      _replaceRootValue(value);
+      _replaceRootValue(value!);
       return;
     }
     _file.appendUpdate(ChestFileUpdate(path, value));

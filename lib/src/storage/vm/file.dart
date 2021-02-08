@@ -23,9 +23,9 @@ import '../storage.dart';
 ///
 /// ## Update layout
 ///
-/// | isValid | path                     | value           |
-/// |         | length | key | key | ... | length | bytes  |
-/// | 1 byte  | many bytes               | many bytes      |
+/// | isValid | path                     | type              | value           |
+/// |         | length | key | key | ... | 0=update 1=remove | length | bytes  |
+/// | 1 byte  | many bytes               | 1 byte            | many bytes      |
 class ChestFile {
   ChestFile(String path) : this._file = SyncFile(path);
 
@@ -62,6 +62,11 @@ class ChestFile {
     }
     final path = Path(keys);
 
+    final isRemoval = _file.readByte() == 1;
+    if (isRemoval) {
+      return ChestFileUpdate(path, null);
+    }
+
     final valueLength = _file.readInt();
     final valueBytes = Uint8List(valueLength);
     _file.readBytesInto(valueBytes);
@@ -91,14 +96,17 @@ class ChestFile {
         ..writeInt(keyBytes.length)
         ..writeBytes(keyBytes);
     }
-    final bytes = update.value.toBytes();
-    _file
-      ..writeInt(bytes.length)
-      ..writeBytes(bytes)
-      ..flush()
-      ..goTo(start)
-      ..writeByte(1) // make transaction valid
-      ..flush();
+    _file.writeByte(update.isRemoval ? 1 : 0);
+    if (!update.isRemoval) {
+      final bytes = update.value!.toBytes();
+      _file
+        ..writeInt(bytes.length)
+        ..writeBytes(bytes)
+        ..flush()
+        ..goTo(start)
+        ..writeByte(1) // make transaction valid
+        ..flush();
+    }
   }
 
   String get path => _file.path;
@@ -128,7 +136,9 @@ class ChestFileUpdate {
   ChestFileUpdate(this.path, this.value);
 
   final Path<Block> path;
-  final Block value;
+  final Block? value;
+
+  bool get isRemoval => value == null;
 }
 
 /// A file representation that only offers synchronous operations. This makes

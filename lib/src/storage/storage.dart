@@ -15,7 +15,7 @@ abstract class Storage {
   Stream<Update> get updates;
 
   Future<UpdatableBlock?> getValue(); // For now, only used on startup.
-  void setValue(Path<Block> path, Block value);
+  void setValue(Path<Block> path, Block? value);
 
   Future<void> flush();
   Future<UpdatableBlock> migrate();
@@ -27,5 +27,5 @@ class Update {
   Update(this.path, this.value);
 
   final Path<Block> path;
-  final Block value;
+  final Block? value;
 }

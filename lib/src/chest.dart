@@ -67,10 +67,6 @@ class Chest<T> extends Reference<T> {
     _openedBackends.remove(name);
   }
 
-  Future<void> delete() async {
-    await Backend.delete(name);
-  }
-
   @override
   Reference<R> child<R>(Object? key, {bool createImplicitly = false}) {
     return InteriorReference<R>(this, Path([key]), createImplicitly);
@@ -97,6 +93,16 @@ class Chest<T> extends Reference<T> {
     return _backend!.getAt(path);
   }
 
+  Future<void> remove() async {
+    await close();
+    await Backend.remove(name);
+  }
+
+  void _removeAt(Path<Object?> path) {
+    assert(isOpened);
+    return _backend!.removeAt(path);
+  }
+
   @override
   Stream<void> watch() => _watchAt(Path.root());
   Stream<void> _watchAt(Path<Object?> path) {
@@ -119,6 +125,7 @@ abstract class Reference<T> {
   T valueOr(T Function() orElse) => exists ? value : orElse();
   T? get valueOrNull => exists ? value : null;
   set value(T value);
+  void remove();
 
   /// A [Stream] that fires evertime the [value] that this reference points to
   /// changes.
@@ -158,4 +165,5 @@ class InteriorReference<T> extends Reference<T> {
   set value(T value) => chest._setAt(path, value, createImplicitly);
   T get value => chest._getAt<T>(path);
   Stream<void> watch() => chest._watchAt(path);
+  void remove() => chest._removeAt(path);
 }

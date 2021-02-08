@@ -104,7 +104,7 @@ class VmStorage implements Storage {
   }
 
   @override
-  Future<void> setValue(Path<Block> path, Block value) async {
+  Future<void> setValue(Path<Block> path, Block? value) async {
     await _send<ValueSetEvent>(SetValueAction(path: path, value: value));
   }
 

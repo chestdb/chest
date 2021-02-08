@@ -79,7 +79,7 @@ class Backend<T> {
     return Backend<T>(updatableContent, storage);
   }
 
-  static Future<void> delete(String name) => Storage.delete(name);
+  static Future<void> remove(String name) => Storage.delete(name);
 
   static Backend<T> mock<T>(String name, T value) {
     final content = Content(
@@ -116,6 +116,13 @@ class Backend<T> {
   R? getAt<R>(Path<Object?> path) {
     final actualPath = pathToValue.followedBy(path).serialize();
     return _value.getAt(actualPath)?.toObject() as R;
+  }
+
+  void removeAt(Path<Object?> path) {
+    final actualPath = pathToValue.followedBy(path).serialize();
+    _value.update(actualPath, null, createImplicitly: false);
+    _onValueChangedController.add(actualPath);
+    _storage.setValue(actualPath, null);
   }
 
   Stream<void> watchAt(Path<Object?> path) {

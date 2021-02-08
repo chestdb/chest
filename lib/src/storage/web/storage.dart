@@ -14,7 +14,7 @@ class WebStorage implements Storage {
   Future<UpdatableBlock?> getValue() async => panic('WebStorage used.');
 
   @override
-  void setValue(Path<Block> path, Block value) => panic('WebStorage used.');
+  void setValue(Path<Block> path, Block? value) => panic('WebStorage used.');
 
   @override
   Future<void> flush() async => panic('WebStorage used.');

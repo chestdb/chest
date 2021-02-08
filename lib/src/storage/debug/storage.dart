@@ -14,7 +14,7 @@ class DebugStorage implements Storage {
   Future<UpdatableBlock?> getValue() async => _value;
 
   @override
-  void setValue(Path<Block> path, Block value) {
+  void setValue(Path<Block> path, Block? value) {
     _value.update(path, value, createImplicitly: true);
     _controller.add(Update(path, value));
   }
