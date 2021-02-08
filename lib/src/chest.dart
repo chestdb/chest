@@ -19,7 +19,7 @@ import 'storage/storage.dart';
 /// You don't need to [close] [Chest]s if you're not absolutely sure you don't
 /// need them later on: Even if your program exists while a [Chest] is opened or
 /// its value is being changed, a valid state of the chest is recovered.
-class Chest<T> implements Reference<T> {
+class Chest<T> extends Reference<T> {
   /// Creates a new [Chest].
   Chest(this.name, {required this.ifNew});
 
@@ -117,15 +117,30 @@ abstract class Reference<T> {
 
   /// The [value] this reference points to.
   T get value;
+  T valueOr(T Function() orElse) => exists ? value : orElse();
+  T? get valueOrNull => exists ? value : null;
   set value(T value);
 
   /// A [Stream] that fires evertime the [value] that this reference points to
   /// changes.
   Stream<void> watch();
+
+  /// Updates the value reference with the given function.
+  void update(T Function(T value) updater) {
+    value = updater(value);
+  }
+
+  /// Updates the value by calling the mutating function and then saving the
+  /// value.
+  void mutate(void Function(T value) mutater) {
+    final mutableValue = value;
+    mutater(mutableValue);
+    value = mutableValue;
+  }
 }
 
 /// A reference to an interior part of a [Chest].
-class InteriorReference<T> implements Reference<T> {
+class InteriorReference<T> extends Reference<T> {
   InteriorReference(this.chest, this.path, this.createImplicitly);
 
   final Chest chest;
