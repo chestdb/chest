@@ -1,4 +1,4 @@
-## 0.0.5-0
+## 0.1.0-0
 
 * Make root path configurable.
 * Improve error messages by decoding paths and always printing the chest name.

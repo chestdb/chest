@@ -1,4 +1,4 @@
-⚠ This package is currently in active development and is not production-ready just yet. Breaking changes are still to be expected. Stay tuned!
+⚠️ This package is in its alpha stage. You can use it experimentally, but not in production yet. The binary format is not stable yet, so data might be lost. Stay tuned!
 
 ---
 
