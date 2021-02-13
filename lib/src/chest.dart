@@ -23,17 +23,6 @@ class Chest<T> extends Reference<T> {
   /// Creates a new [Chest].
   Chest(this.name, {required this.ifNew});
 
-  static void mock<T>(String name, T value) {
-    if (_mockedBackends.containsKey(name)) {
-      panic('Called Chest.mock, but chest "$name" is already mocked.');
-    }
-    if (_openedBackends.isNotEmpty) {
-      panic('Called Chest.mock after you opened a chest. All mock calls should '
-          'occur before opening the first chest.');
-    }
-    _mockedBackends[name] = Backend.mock<T>(name, value);
-  }
-
   final String name;
   final T Function() ifNew;
   Backend<T>? _backend;
@@ -49,6 +38,19 @@ class Chest<T> extends Reference<T> {
       _backend = await Backend.open(name, ifNew);
     }
     _openedBackends[name] = _backend!;
+  }
+
+  void mock([T? value]) {
+    if (_mockedBackends.containsKey(name)) {
+      panic("Called Chest.mock on chest $name, but it's already mocked.");
+    }
+    if (_openedBackends.containsKey(name)) {
+      panic("Called Chest.mock on chest $name, but it's already opened.");
+    }
+    final backend = Backend.mock<T>(name, value ?? ifNew());
+    _mockedBackends[name] = backend;
+    _openedBackends[name] = backend;
+    _backend = backend;
   }
 
   Future<void> flush() async {
