@@ -1,6 +1,10 @@
 ## 0.0.5-0
 
 * Make root path configurable.
+* Improve error messages by decoding paths and always printing the chest name.
+* Add `update` and `mutate` methods to `Reference`.
+* Add `valueOr` and `valueOrNull` on `Reference`.
+* Make `Uint8`'s `toString` nicer.
 
 ## 0.0.4-0
 
@@ -10,11 +14,11 @@
 * Support migration of tapers.
 * Chest files now have magic bytes at the beginning.
 * Prepare for code generation.
-* Better error handling in isolate.
+* Better error handling in the isolate.
 
 ## 0.0.3-0
 
-* Develop brand including color palette, font, and logo.
+* Develop brand, including color palette, font, and logo.
 * Use more efficient `TransferableTypedData` for sending bytes between isolates.
 * Support manually compacting chests.
 * Revise readme, adding documentation on tapers.
