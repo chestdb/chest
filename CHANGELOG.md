@@ -1,3 +1,7 @@
+## 0.1.1
+
+* Use stable null-safety.
+
 ## 0.1.0-0
 
 * Make root path configurable.
