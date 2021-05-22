@@ -59,7 +59,11 @@ class Uint8 {
 
   final int value;
 
+  @override
   bool operator ==(Object other) => other is Uint8 && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 
   @override
   String toString() => '$value';

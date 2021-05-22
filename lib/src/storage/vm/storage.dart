@@ -87,7 +87,7 @@ class VmStorage implements Storage {
         await incomingMessages.firstWhere((message) => message.uuid == uuid);
     final event = answer.event;
     if (event is ErrorEvent) {
-      throw event;
+      throw event.error;
     }
     if (event is! E) {
       panic("Cast of received event failed. Expected $E, but was "
