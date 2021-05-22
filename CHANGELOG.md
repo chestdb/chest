@@ -1,3 +1,7 @@
+## 0.1.2
+
+* Fix bug during migration.
+
 ## 0.1.1
 
 * Use stable null-safety.

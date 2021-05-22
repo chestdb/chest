@@ -1,10 +1,10 @@
 name: chest
-version: 0.1.1
+version: 0.1.2
 description: A flexible in-memory database with amazing developer experience.
 repository: https://github.com/chestdb/chest
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
   more: ^3.0.1
