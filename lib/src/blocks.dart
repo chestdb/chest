@@ -1,5 +1,3 @@
-import 'package:more/more.dart';
-
 import 'bytes.dart';
 import 'utils.dart';
 
@@ -62,7 +60,7 @@ abstract class MapBlock extends Block {
           entries.deeplyEquals(other.entries);
 
   @override
-  int get hashCode => hash2(typeCode, hash(entries));
+  int get hashCode => Object.hashAll([typeCode, ...entries]);
 
   @override
   int compareTo(Block other) {
@@ -104,7 +102,9 @@ abstract class MapBlock extends Block {
         ..write(entry.value.toString(indentation + 1))
         ..writeln();
     }
-    buffer..write('  ' * indentation)..write('}');
+    buffer
+      ..write('  ' * indentation)
+      ..write('}');
     return buffer.toString();
   }
 }
@@ -138,7 +138,7 @@ abstract class BytesBlock extends Block {
           typeCode == other.typeCode &&
           bytes.deeplyEquals(other.bytes);
 
-  int get hashCode => hash2(typeCode, hash(bytes));
+  int get hashCode => Object.hashAll([typeCode, ...bytes]);
 
   @override
   int compareTo(Block other) {

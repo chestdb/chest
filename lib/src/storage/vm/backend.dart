@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../storage.dart';
+import '../utils.dart';
 import 'file.dart';
 import 'message.dart';
 import 'transferable_block.dart';

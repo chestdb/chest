@@ -1,10 +1,4 @@
 import '../blocks.dart';
-
-export '../blocks.dart';
-export '../bytes.dart';
-export '../tapers.dart';
-export '../utils.dart';
-
 import 'web/storage.dart' if (dart.library.io) 'vm/storage.dart';
 
 abstract class Storage {

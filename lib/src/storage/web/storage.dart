@@ -1,4 +1,4 @@
-import '../storage.dart';
+import '../utils.dart';
 
 Future<Storage> openStorage(String name) => WebStorage.open(name);
 Future<Storage> deleteChest(String name) =>

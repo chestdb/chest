@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../storage.dart';
+import '../utils.dart';
 
 class DebugStorage implements Storage {
   DebugStorage(this._value);

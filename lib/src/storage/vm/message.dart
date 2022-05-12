@@ -1,4 +1,4 @@
-import '../storage.dart';
+import '../utils.dart';
 import 'transferable_block.dart';
 
 /// [ActionMessage]s are sent from the user's isolate to the chest backend

@@ -1,11 +1,12 @@
 import 'dart:async';
 
-import 'package:chest/src/storage/debug/storage.dart';
-
 import 'blocks.dart';
+import 'bytes.dart';
 import 'content.dart';
+import 'storage/debug/storage.dart';
 import 'storage/storage.dart';
 import 'tapers.dart';
+import 'utils.dart';
 
 /// The [Backend] for chests that already supports saving and updating a value,
 /// but does not yet offer saving and maintaining `References` or saving which
@@ -171,7 +172,5 @@ class ChestDoesNotMatchTypeError extends ChestError {
 }
 
 extension on Path<Object?> {
-  Path<Block> serialize() {
-    return Path(keys.map((it) => it.toBlock()).toList());
-  }
+  Path<Block> serialize() => Path(keys.map((it) => it.toBlock()).toList());
 }

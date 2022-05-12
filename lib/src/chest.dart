@@ -1,8 +1,9 @@
 import 'dart:async';
 
+import 'api.dart';
 import 'backend.dart';
 import 'blocks.dart';
-import 'storage/storage.dart';
+import 'utils.dart';
 
 /// A container for a value that's persisted beyond the app's lifetime.
 ///

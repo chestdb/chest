@@ -20,13 +20,11 @@ extension StreamWhereType<T> on Stream<T> {
 }
 
 extension WhereKeyValue<K, V> on Iterable<MapEntry<K, V>> {
-  Iterable<MapEntry<K, V>> whereKeyValue(bool Function(K key, V value) check) {
-    return where((entry) => check(entry.key, entry.value));
-  }
+  Iterable<MapEntry<K, V>> whereKeyValue(bool Function(K key, V value) check) =>
+      where((entry) => check(entry.key, entry.value));
 
-  Iterable<T> mapKeyValue<T>(T Function(K key, V value) mapper) {
-    return map((entry) => mapper(entry.key, entry.value));
-  }
+  Iterable<T> mapKeyValue<T>(T Function(K key, V value) mapper) =>
+      map((entry) => mapper(entry.key, entry.value));
 
   Map<K, V> toMap() => Map.fromEntries(this);
 }
@@ -44,7 +42,7 @@ abstract class ChestException implements Exception {}
 
 abstract class ChestError extends Error {}
 
-const repoUrl = 'https://github.com/marcelgarus/chest';
+const repoUrl = 'https://github.com/chestdb/chest';
 String newIssueUrl(String title, String body, [List<String> tags = const []]) {
   return '$repoUrl/issues/new?title=${Uri.encodeComponent(title)}&'
       'body=${Uri.encodeComponent(body)}&'

@@ -2,8 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:math';
 
-import '../../utils.dart';
-import '../storage.dart';
+import '../utils.dart';
 import 'backend.dart';
 import 'file.dart';
 import 'message.dart';

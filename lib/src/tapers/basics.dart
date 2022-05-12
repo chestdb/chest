@@ -5,25 +5,6 @@ export '../api.dart';
 export '../chest.dart';
 export '../tapers.dart';
 
-class _InlineTaper<T> extends Taper<T> {
-  const _InlineTaper({
-    required TapeData Function(T value) toData,
-    required T Function(TapeData data) fromData,
-    this.isLegacy = false,
-  })  : _toData = toData,
-        _fromData = fromData;
-
-  final TapeData Function(T value) _toData;
-  final T Function(TapeData data) _fromData;
-  final bool isLegacy;
-
-  @override
-  TapeData toData(T value) => _toData(value);
-
-  @override
-  T fromData(TapeData data) => _fromData(data);
-}
-
 /// A [Taper] that turns a value into bytes.
 abstract class BytesTaper<T> extends Taper<T> {
   const BytesTaper();

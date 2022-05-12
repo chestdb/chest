@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import '../storage.dart';
+import '../utils.dart';
 
 /// A higher-level abstraction of a `.chest` file.
 ///

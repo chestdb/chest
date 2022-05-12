@@ -1,6 +1,6 @@
 import 'dart:isolate';
 
-import '../storage.dart';
+import '../utils.dart';
 
 /// A representation of a [Block] that doesn't offer direct access to its
 /// content, but can be efficiently transferred between [Isolate]s.
